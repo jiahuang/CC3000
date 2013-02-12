@@ -46,7 +46,7 @@
 #include "wlan.h"
 #include "socket.h"
 #include "netapp.h"
-#include "spi.h"
+//#include <bfspi.h>
 
 
 unsigned long socket_active_status = SOCKET_STATUS_INIT_VAL;  

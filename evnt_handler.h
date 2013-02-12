@@ -36,6 +36,7 @@
 #define __EVENT_HANDLER_H__
 #include "hci.h"
 #include "socket.h"
+//#include "bfspi.h"
 
 //*****************************************************************************
 //

@@ -48,6 +48,8 @@
 #include "security.h"
 #include "evnt_handler.h"
 #include "os.h"
+#include "Arduino.h"
+#include "bfspi.h"
 
 volatile sSimplLinkInformation tSLInformation;
 

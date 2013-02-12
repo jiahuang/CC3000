@@ -42,7 +42,7 @@
 
 #include "cc3000_common.h"
 #include "hci.h"
-#include "spi.h"
+#include "bfspi.h"
 #include "evnt_handler.h"
 #include "wlan.h"
 
