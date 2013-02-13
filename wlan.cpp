@@ -300,28 +300,28 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 
 
 
-	if (ulSpiIRQState)
-	{
-		//
-		// wait till the IRQ line goes low
-		//
-		while(tSLInformation.ReadWlanInterruptPin() != 0)
-		{
-		}
-	}
-	else
-	{
-		//
-		// wait till the IRQ line goes high and than low
-		//
-		while(tSLInformation.ReadWlanInterruptPin() == 0)
-		{
-		}
+	// if (ulSpiIRQState)
+	// {
+	// 	//
+	// 	// wait till the IRQ line goes low
+	// 	//
+	// 	while(tSLInformation.ReadWlanInterruptPin() != 0)
+	// 	{
+	// 	}
+	// }
+	// else
+	// {
+	// 	//
+	// 	// wait till the IRQ line goes high and than low
+	// 	//
+	// 	while(tSLInformation.ReadWlanInterruptPin() == 0)
+	// 	{
+	// 	}
 
-		while(tSLInformation.ReadWlanInterruptPin() != 0)
-		{
-		}
-	}
+	// 	while(tSLInformation.ReadWlanInterruptPin() != 0)
+	// 	{
+	// 	}
+	// }
 
 
 	
@@ -329,8 +329,6 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 //     Need?? to uncomment this if statement once connected to chip.  NOt sure why its needed
 //****************************************************************
 	//SimpleLink_Init_Start(usPatchesAvailableAtHost);
-
-	
 
 	// Read Buffer's size and finish
 	hci_command_send(HCI_CMND_READ_BUFFER_SIZE, tSLInformation.pucTxCommandBuffer, 0);

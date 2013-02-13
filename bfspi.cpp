@@ -170,21 +170,21 @@ SpiClose(void)
 void 
 SpiOpen(gcSpiHandleRx pfRxHandler)
 {
-	// sSpiInformation.ulSpiState = eSPI_STATE_POWERUP;
+	sSpiInformation.ulSpiState = eSPI_STATE_POWERUP;
 
-	// sSpiInformation.SPIRxHandler = pfRxHandler;
-	// sSpiInformation.usTxPacketLength = 0;
-	// sSpiInformation.pTxPacket = NULL;
-	// sSpiInformation.pRxPacket = (unsigned char *)spi_buffer;
-	// sSpiInformation.usRxPacketLength = 0;
-	// spi_buffer[CC3000_RX_BUFFER_SIZE - 1] = CC3000_BUFFER_MAGIC_NUMBER;
-	// wlan_tx_buffer[CC3000_TX_BUFFER_SIZE - 1] = CC3000_BUFFER_MAGIC_NUMBER;
+	sSpiInformation.SPIRxHandler = pfRxHandler;
+	sSpiInformation.usTxPacketLength = 0;
+	sSpiInformation.pTxPacket = NULL;
+	sSpiInformation.pRxPacket = (unsigned char *)spi_buffer;
+	sSpiInformation.usRxPacketLength = 0;
+	spi_buffer[CC3000_RX_BUFFER_SIZE - 1] = CC3000_BUFFER_MAGIC_NUMBER;
+	wlan_tx_buffer[CC3000_TX_BUFFER_SIZE - 1] = CC3000_BUFFER_MAGIC_NUMBER;
 
 
-	//
-	// Enable interrupt on the GPIOA pin of WLAN IRQ
-	//
-	//tSLInformation.WlanInterruptEnable();
+	
+//	Enable interrupt on the GPIOA pin of WLAN IRQ
+	
+	tSLInformation.WlanInterruptEnable();
 }
 
 
@@ -229,7 +229,6 @@ int init_spi(void)
    // SpiOpen(*p);
 
 
-	
 
 	wlan_init(CC3000_UsynchCallback, NULL, NULL, NULL, ReadWlanInterruptPin, WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
 
@@ -339,29 +338,33 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 long
 SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 {
+    
+    // workaround for first transaction
     //
-    // // workaround for first transaction
-    // //
     
-    // digitalWrite(SS,LOW);
+    digitalWrite(SS,LOW);
 	
-    // // Assuming we are running on 4 MHz ~50 micro delay is 1200 cycles;
-    // __delay_cycles(200);
+    // Assuming we are running on 4 MHz ~50 micro delay is 1200 cycles;
+    delayMicroseconds(50);
 	
-    // // SPI writes first 4 bytes of data
-    // SpiWriteDataSynchronous(ucBuf, 4);
+    // SPI writes first 4 bytes of data
+    SpiWriteDataSynchronous(ucBuf, 4);
 
-    // __delay_cycles(200);
-	
-    // SpiWriteDataSynchronous(ucBuf + 4, usLength - 4);
 
-    // // From this point on - operate in a regular way
-    // sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
+    delayMicroseconds(50);
+	
+    SpiWriteDataSynchronous(ucBuf + 4, usLength - 4);
+
+    // From this point on - operate in a regular way
+    sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
     
     
-    // digitalWrite(SS,HIGH);
+    digitalWrite(SS,HIGH);
 
-    // return(0);
+
+
+
+    return(0);
 }
 
 
@@ -380,85 +383,89 @@ SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 long
 SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 {
- //    unsigned char ucPad = 0;
-
-	// //
-	// // Figure out the total length of the packet in order to figure out if there is padding or not
-	// //
- //    if(!(usLength & 0x0001))
- //    {
- //        ucPad++;
- //    }
 
 
- //    pUserBuffer[0] = WRITE;
- //    pUserBuffer[1] = HI(usLength + ucPad);
- //    pUserBuffer[2] = LO(usLength + ucPad);
- //    pUserBuffer[3] = 0;
- //    pUserBuffer[4] = 0;
+    unsigned char ucPad = 0;
 
- //    usLength += (SPI_HEADER_SIZE + ucPad);
-        
- //        // The magic number that resides at the end of the TX/RX buffer (1 byte after the allocated size)
- //        // for the purpose of detection of the overrun. If the magic number is overriten - buffer overrun 
- //        // occurred - and we will stuck here forever!
-	// if (wlan_tx_buffer[CC3000_TX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
-	// {
-	// 	while (1)
-	// 		;
-	// }
+	//
+	// Figure out the total length of the packet in order to figure out if there is padding or not
+	//
+    if(!(usLength & 0x0001))
+    {
+        ucPad++;
+    }
 
-	// if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
-	// {
-	// 	while (sSpiInformation.ulSpiState != eSPI_STATE_INITIALIZED)
-	// 		;
-	// }
+
+    pUserBuffer[0] = WRITE;
+    pUserBuffer[1] = HI(usLength + ucPad);
+    pUserBuffer[2] = LO(usLength + ucPad);
+    pUserBuffer[3] = 0;
+    pUserBuffer[4] = 0;
+
+    usLength += (SPI_HEADER_SIZE + ucPad);
+
+
+        	
+        // The magic number that resides at the end of the TX/RX buffer (1 byte after the allocated size)
+        // for the purpose of detection of the overrun. If the magic number is overriten - buffer overrun 
+        // occurred - and we will stuck here forever!
+	if (wlan_tx_buffer[CC3000_TX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
+	{
+		while (1)
+			;
+	}
+
+	if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
+	{
+		while (sSpiInformation.ulSpiState != eSPI_STATE_INITIALIZED)
+			;
+	}
 	
-	// if (sSpiInformation.ulSpiState == eSPI_STATE_INITIALIZED)
-	// {
-	// 	//
-	// 	// This is time for first TX/RX transactions over SPI: the IRQ is down - so need to send read buffer size command
-	// 	//
-	// 	SpiFirstWrite(pUserBuffer, usLength);
-	// }
-	// else 
-	// {
+	if (sSpiInformation.ulSpiState == eSPI_STATE_INITIALIZED)
+	{
+		//
+		// This is time for first TX/RX transactions over SPI: the IRQ is down - so need to send read buffer size command
+		//
+		SpiFirstWrite(pUserBuffer, usLength);
+	}
+	else 
+	{
 		
 		
 
-	// 	while (sSpiInformation.ulSpiState != eSPI_STATE_IDLE)
-	// 	{
-	// 		;
-	// 	}
+		while (sSpiInformation.ulSpiState != eSPI_STATE_IDLE)
+		{
+			;
+		}
 
 		
-	// 	sSpiInformation.ulSpiState = eSPI_STATE_WRITE_IRQ;
-	// 	sSpiInformation.pTxPacket = pUserBuffer;
-	// 	sSpiInformation.usTxPacketLength = usLength;
+		sSpiInformation.ulSpiState = eSPI_STATE_WRITE_IRQ;
+		sSpiInformation.pTxPacket = pUserBuffer;
+		sSpiInformation.usTxPacketLength = usLength;
 		
 		
-	// 	//Assert SS
-	// 	digitalWrite(SS,LOW);
+		//Assert SS
+		digitalWrite(SS,LOW);
 
-	// 	//Wait for CC to be ready
-	// 	while (readIRQ != LOW)
-	// 	{
-	// 		;
-	// 	}
+		//Wait for CC to be ready
+	//	while (readIRQ != LOW)
+	//	{
+	//		;
+		//}
 
-	// 	SpiWriteDataSynchronous(pUserBuffer, usLength);
+		SpiWriteDataSynchronous(pUserBuffer, usLength);
 
-	// 	//Assert SS
-	// 	digitalWrite(SS,HIGH);
+		//Assert SS
+		digitalWrite(SS,HIGH);
 
-	// 	//Wait for CC to be ready
-	// 	while (readIRQ != HIGH)
-	// 	{
-	// 		;
-	// 	}
+		//Wait for CC to be ready
+		//while (readIRQ != HIGH)
+		//{
+		//	;
+		//}
 
 
-	// }
+	}
 
 
     return(0);
