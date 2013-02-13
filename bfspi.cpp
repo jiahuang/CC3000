@@ -43,6 +43,9 @@
 //Set IRQ Pin
 int IRQ = 9; 
 
+//foor spi bus loop
+int loc = 0; 
+
 char ssid[] = "yourNetwork";                     // your network SSID (name) 
 unsigned char keys[] = "111111111111111";       // your network key
 unsigned char bssid[] = "D0D0DEADF00DABBADEAFBEADED";       // your network key
@@ -90,20 +93,22 @@ void SSIContReadOperation(void);
 // *CCS does not initialize variables - therefore, __no_init is not needed.                             ///
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __CCS__
-#pragma DATA_SECTION(spi_buffer, ".FRAM_DATA")
-char spi_buffer[CC3000_RX_BUFFER_SIZE];
+// #ifdef __CCS__
+// #pragma DATA_SECTION(spi_buffer, ".FRAM_DATA")
+// char spi_buffer[CC3000_RX_BUFFER_SIZE];
 
-#elif __IAR_SYSTEMS_ICC__
-#pragma location = "FRAM_DATA"
-__no_init char spi_buffer[CC3000_RX_BUFFER_SIZE];
-#endif
+// #elif __IAR_SYSTEMS_ICC__
+// #pragma location = "FRAM_DATA"
+// __no_init char spi_buffer[CC3000_RX_BUFFER_SIZE];
+// #endif
 
 
 
 //#ifdef __CCS__
 //#pragma DATA_SECTION(wlan_tx_buffer, ".FRAM_DATA")
 unsigned char wlan_tx_buffer[CC3000_TX_BUFFER_SIZE];
+unsigned char spi_buffer[CC3000_RX_BUFFER_SIZE];
+
 
 //#elif __IAR_SYSTEMS_ICC__
 //#pragma location = "FRAM_DATA"
@@ -181,7 +186,7 @@ SpiOpen(gcSpiHandleRx pfRxHandler)
 	wlan_tx_buffer[CC3000_TX_BUFFER_SIZE - 1] = CC3000_BUFFER_MAGIC_NUMBER;
 
 
-	
+	 
 //	Enable interrupt on the GPIOA pin of WLAN IRQ
 	
 	tSLInformation.WlanInterruptEnable();
@@ -230,6 +235,8 @@ int init_spi(void)
 
 
 
+
+
 	wlan_init(CC3000_UsynchCallback, NULL, NULL, NULL, ReadWlanInterruptPin, WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
 
 
@@ -244,8 +251,6 @@ int init_spi(void)
 
     return(0);
 }
-
-
 
 
 //*****************************************************************************
@@ -383,7 +388,7 @@ SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 long
 SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 {
-
+  
 
     unsigned char ucPad = 0;
 
@@ -405,6 +410,7 @@ SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
     usLength += (SPI_HEADER_SIZE + ucPad);
 
 
+
         	
         // The magic number that resides at the end of the TX/RX buffer (1 byte after the allocated size)
         // for the purpose of detection of the overrun. If the magic number is overriten - buffer overrun 
@@ -414,6 +420,8 @@ SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		while (1)
 			;
 	}
+
+
 
 	if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
 	{
@@ -426,6 +434,7 @@ SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		//
 		// This is time for first TX/RX transactions over SPI: the IRQ is down - so need to send read buffer size command
 		//
+
 		SpiFirstWrite(pUserBuffer, usLength);
 	}
 	else 
@@ -448,21 +457,16 @@ SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		digitalWrite(SS,LOW);
 
 		//Wait for CC to be ready
-	//	while (readIRQ != LOW)
-	//	{
-	//		;
-		//}
+
 
 		SpiWriteDataSynchronous(pUserBuffer, usLength);
 
 		//Assert SS
 		digitalWrite(SS,HIGH);
 
+
 		//Wait for CC to be ready
-		//while (readIRQ != HIGH)
-		//{
-		//	;
-		//}
+
 
 
 	}
@@ -489,16 +493,20 @@ char
 SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 {
 
-	// for (loc = 0; loc < size; loc++)
+	for (loc = 0; loc < size; loc++){
 
-	// 	SPDR = *data + loc;                    // Start the transmission
-	//     while (!(SPSR & (1<<SPIF)))     // Wait the end of the transmission
-	//     {
-	//     };
-	//     //char result = SPDR;
-	// }
 
- //    return result;    
+		Serial.println(data[loc]); 
+
+		SPDR = data[loc];                    // Start the transmission
+	    while (!(SPSR & (1<<SPIF)))     // Wait the end of the transmission
+	    {
+	    };
+	    //char result = SPDR;
+	}
+
+    //return result;    
+    return 0; 
 }
 
 //*****************************************************************************

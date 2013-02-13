@@ -22,6 +22,7 @@ typedef void (*gcSpiHandleRx)(void *p);
 typedef void (*gcSpiHandleTx)(void);
 
 extern unsigned char wlan_tx_buffer[];
+extern unsigned char spi_buffer[];
 
 #define MOSI_MISO_PORT_SEL    P1SEL1
 #define MOSI_MISO_PORT_SEL2   P1SEL0
