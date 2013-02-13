@@ -44,7 +44,7 @@
 int IRQ = 9; 
 
 char ssid[] = "yourNetwork";                     // your network SSID (name) 
-unsigned char key[] = "111111111111111";       // your network key
+unsigned char keys[] = "111111111111111";       // your network key
 unsigned char bssid[] = "D0D0DEADF00DABBADEAFBEADED";       // your network key
 int keyIndex = 0; 
 
@@ -204,6 +204,7 @@ SpiOpen(gcSpiHandleRx pfRxHandler)
 int init_spi(void)
 {
 
+
     //set ss pin direction
    // pinMode(SS, OUTPUT);
     pinMode(IRQ, INPUT);
@@ -227,15 +228,20 @@ int init_spi(void)
 
    // SpiOpen(*p);
 
+
+	
+
 	wlan_init(CC3000_UsynchCallback, NULL, NULL, NULL, ReadWlanInterruptPin, WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
+
+
 
 	wlan_start(0);
 
+ 
+
+	wlan_connect(WLAN_SEC_UNSEC,ssid,10, bssid, keys, 16);
 
 
-	wlan_connect(WLAN_SEC_UNSEC,ssid,10, bssid, key, 16);
-
-	Serial.println("Connected"); 
 
     return(0);
 }

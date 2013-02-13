@@ -114,11 +114,16 @@ static void SimpleLink_Init_Start(unsigned short usPatchesAvailableAtHost)
     unsigned char *ptr;
 	unsigned char *args;
 
+
+
     ptr = tSLInformation.pucTxCommandBuffer;
 	args = (unsigned char *)(ptr + HEADERS_SIZE_CMD);
 
+
+
 	UINT8_TO_STREAM(args, ((usPatchesAvailableAtHost) ? SL_PATCHES_REQUEST_FORCE_HOST : SL_PATCHES_REQUEST_DEFAULT));
 	
+
 	// IRQ Line asserted - start the read buffer size command
 	hci_command_send(HCI_CMND_SIMPLE_LINK_START, ptr, WLAN_SL_INIT_START_PARAMS_LEN);
 	
@@ -246,6 +251,7 @@ void SpiReceiveHandler(void *pvBuffer)
 void
 wlan_start(unsigned short usPatchesAvailableAtHost)
 {
+
 	unsigned long ulSpiIRQState;
 	
 	tSLInformation.NumberOfSentPackets = 0;
@@ -267,6 +273,8 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 	//
 	tSLInformation.pucTxCommandBuffer = (unsigned char *)wlan_tx_buffer;
 
+
+
 	//
 	// init spi
 	//
@@ -281,6 +289,16 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
     // ASIC 1273 chip enable: toggle WLAN EN line
     //
     tSLInformation.WriteWlanPin( WLAN_ENABLE );
+
+
+
+
+
+// *******************************************************
+//    NEED TO VERIFY THIS IF STATEMENT WORKS PROPERLY
+// ****************************************************************
+
+
 
 	if (ulSpiIRQState)
 	{
@@ -304,12 +322,27 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 		{
 		}
 	}
+
+
 	
-	SimpleLink_Init_Start(usPatchesAvailableAtHost);
+//*******************************************************
+//     Need?? to uncomment this if statement once connected to chip.  NOt sure why its needed
+//****************************************************************
+	//SimpleLink_Init_Start(usPatchesAvailableAtHost);
+
+	
 
 	// Read Buffer's size and finish
 	hci_command_send(HCI_CMND_READ_BUFFER_SIZE, tSLInformation.pucTxCommandBuffer, 0);
+
+
+
+// *******************************************************
+//    NEED TO VERIFY HANDLING OF THIS RETURN MESSAGE FROM CHIP
+// ***************************************************
 	SimpleLinkWaitEvent(HCI_CMND_READ_BUFFER_SIZE, 0);
+
+	
 }
 
 /**
