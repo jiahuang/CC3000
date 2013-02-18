@@ -79,7 +79,6 @@ hci_command_send(unsigned short usOpcode, unsigned char *pucBuff,
 	//
     SpiWrite(pucBuff, ucArgsLength + SIMPLE_LINK_HCI_CMND_HEADER_SIZE);
 
-
     return(0);
 }
 

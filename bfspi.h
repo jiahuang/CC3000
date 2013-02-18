@@ -58,14 +58,15 @@ extern void SpiCleanGPIOISR(void);
 extern int init_spi(void);
 extern long TXBufferIsEmpty(void);
 extern long RXBufferIsEmpty(void);
-
-
+extern int test(void);
+extern void SPI_IRQ(void);
 
 extern void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length);
 extern long ReadWlanInterruptPin(void);
 extern void WlanInterruptEnable();
 extern void WlanInterruptDisable();
 extern void WriteWlanPin( unsigned char val );
+extern void print_spi_state(void);
 
 //*****************************************************************************
 //

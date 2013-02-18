@@ -94,7 +94,7 @@ unsigned char profileArray[SMART_CONFIG_PROFILE_SIZE];
 #define WLAN_CONNECT_PARAM_LEN					(29)
 #define WLAN_SMART_CONFIG_START_PARAMS_LEN		(4)
 
-
+#define NOCHIP_MODE		(1)
 
 
 //*****************************************************************************
@@ -251,7 +251,6 @@ void SpiReceiveHandler(void *pvBuffer)
 void
 wlan_start(unsigned short usPatchesAvailableAtHost)
 {
-
 	unsigned long ulSpiIRQState;
 	
 	tSLInformation.NumberOfSentPackets = 0;
@@ -273,8 +272,6 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 	//
 	tSLInformation.pucTxCommandBuffer = (unsigned char *)wlan_tx_buffer;
 
-
-
 	//
 	// init spi
 	//
@@ -291,57 +288,46 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
     tSLInformation.WriteWlanPin( WLAN_ENABLE );
 
 
+    if (!NOCHIP_MODE)
+    {
+		if (ulSpiIRQState)
+		{
+			//
+			// wait till the IRQ line goes low
+			//
+		
+			while(tSLInformation.ReadWlanInterruptPin() != 0)
+			{
+			}
+		}
+		else
+		{
+			//
+			// wait till the IRQ line goes high and than low
+			//
+
+			while(tSLInformation.ReadWlanInterruptPin() == 0)
+			{
+			}
+
+			while(tSLInformation.ReadWlanInterruptPin() != 0)
+			{
+			}
+		}
+	}
 
 
 
-// *******************************************************
-//    NEED TO VERIFY THIS IF STATEMENT WORKS PROPERLY
-// ****************************************************************
-
-
-
-	// if (ulSpiIRQState)
-	// {
-	// 	//
-	// 	// wait till the IRQ line goes low
-	// 	//
-	// 	while(tSLInformation.ReadWlanInterruptPin() != 0)
-	// 	{
-	// 	}
-	// }
-	// else
-	// {
-	// 	//
-	// 	// wait till the IRQ line goes high and than low
-	// 	//
-	// 	while(tSLInformation.ReadWlanInterruptPin() == 0)
-	// 	{
-	// 	}
-
-	// 	while(tSLInformation.ReadWlanInterruptPin() != 0)
-	// 	{
-	// 	}
-	// }
-
-
-	
-//*******************************************************
-//     Need?? to uncomment this if statement once connected to chip.  NOt sure why its needed
-//****************************************************************
-	//SimpleLink_Init_Start(usPatchesAvailableAtHost);
+	/*Serial.println("SimpleLink_Init_Start");
+	SimpleLink_Init_Start(usPatchesAvailableAtHost);
 
 	// Read Buffer's size and finish
+	Serial.println("hci_command_send");
 	hci_command_send(HCI_CMND_READ_BUFFER_SIZE, tSLInformation.pucTxCommandBuffer, 0);
-
-
-
-// *******************************************************
-//    NEED TO VERIFY HANDLING OF THIS RETURN MESSAGE FROM CHIP
-// ***************************************************
-	SimpleLinkWaitEvent(HCI_CMND_READ_BUFFER_SIZE, 0);
-
-	
+	Serial.println("SimpleLinkWaitEvent");
+	SimpleLinkWaitEvent(HCI_CMND_READ_BUFFER_SIZE, 0);*/
 }
+
 
 /**
  * \brief wlan stop
@@ -411,6 +397,9 @@ long
 wlan_connect(unsigned long ulSecType, char *ssid, long ssid_len,
              unsigned char *bssid, unsigned char *key, long key_len)
 {
+
+	Serial.println("wlan_connect");
+
     long ret;
     unsigned char *ptr;
     unsigned char *args;
@@ -453,14 +442,20 @@ wlan_connect(unsigned long ulSecType, char *ssid, long ssid_len,
     // Initiate a HCI command
     //
     hci_command_send(HCI_CMND_WLAN_CONNECT, ptr, WLAN_CONNECT_PARAM_LEN + ssid_len + key_len - 1);
-
+	WlanInterruptDisable();
+	Serial.println("wlan_connect done.");
+	delay(50);
+	print_spi_state();
+	WlanInterruptEnable();
 	//
 	// Wait for command complete event
 	//
-	SimpleLinkWaitEvent(HCI_CMND_WLAN_CONNECT, &ret);
-	errno = ret;
+	//SimpleLinkWaitEvent(HCI_CMND_WLAN_CONNECT, &ret);
+	//errno = ret;
 
-    return(ret);
+
+    return(0);
+
 }
 #else
 long
@@ -495,6 +490,7 @@ wlan_connect(char *ssid, long ssid_len)
     //
     // Initiate a HCI command
     //
+
     hci_command_send(HCI_CMND_WLAN_CONNECT, ptr, WLAN_CONNECT_PARAM_LEN + ssid_len  - 1);
 
 	//
