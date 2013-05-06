@@ -237,7 +237,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 				pucReceivedParams = pucReceivedData + HCI_EVENT_HEADER_SIZE;
 				
 			RecvParams = pucReceivedParams;
-			RetParams = pRetParams;
+			RetParams = (unsigned char *) pRetParams;
 				//
 				// In case unsolicited event received - here the handling finished
 				//

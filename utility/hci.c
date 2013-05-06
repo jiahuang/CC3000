@@ -62,6 +62,7 @@
 //!  \brief               Initiate an HCI cmnd.
 //
 //*****************************************************************************
+
 unsigned short 
 hci_command_send(unsigned short usOpcode, unsigned char *pucBuff,
                      unsigned char ucArgsLength)
@@ -77,7 +78,7 @@ hci_command_send(unsigned short usOpcode, unsigned char *pucBuff,
     //
 	// Update the opcode of the event we will be waiting for
 	//
-    SpiWrite(pucBuff, ucArgsLength + SIMPLE_LINK_HCI_CMND_HEADER_SIZE);
+    SpiWritte(pucBuff, ucArgsLength + SIMPLE_LINK_HCI_CMND_HEADER_SIZE);
 
     return(0);
 }
