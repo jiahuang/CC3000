@@ -13,12 +13,12 @@
 // have a C binding.
 //
 //*****************************************************************************
-// #ifdef  __cplusplus
-// extern "C" {
-// #endif
-
 #ifndef __CC3000_H__
 #define __CC3000_H__
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
 typedef void (*gcSpiHandleRx)(void *p);
 typedef void (*gcSpiHandleTx)(void);
@@ -75,9 +75,9 @@ extern void print_spi_state(void);
 // Mark the end of the C bindings section for C++ compilers.
 //
 //*****************************************************************************
-// #ifdef  __cplusplus
-// }
-// #endif // __cplusplus
+#ifdef  __cplusplus
+}
+#endif // __cplusplus
 
 //#endif
 #endif // __CC3000_H__
