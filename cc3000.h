@@ -1,9 +1,9 @@
 
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include "utility/wlan.h"
+//#include <string.h>
+//#include <stdlib.h>
+//#include <stdio.h>
+//#include "utility/wlan.h"
 
 
 
@@ -70,6 +70,12 @@ extern void WlanInterruptDisable();
 extern void WriteWlanPin( unsigned char val );
 extern void print_spi_state(void);
 
+extern void StartSmartConfig(void);
+extern void initialize(void);
+extern void sendUDP(void);
+extern unsigned char ascii_to_char(char b1, char b2);
+extern unsigned char atoc(char data);
+extern void SpiTriggerRxProcessing(void);
 //*****************************************************************************
 //
 // Mark the end of the C bindings section for C++ compilers.

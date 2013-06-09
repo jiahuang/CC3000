@@ -36,7 +36,6 @@
 #define __EVENT_HANDLER_H__
 #include "hci.h"
 #include "socket.h"
-#include "cc3000.h"
 
 //*****************************************************************************
 //
@@ -53,16 +52,57 @@ extern "C" {
 // Prototypes for the APIs.
 //
 //*****************************************************************************
+
+//*****************************************************************************
+//
+//!  hci_event_handler
+//!
+//!  @param  pRetParams     incoming data buffer
+//!  @param  from           from information (in case of data received)
+//!  @param  fromlen        from information length (in case of data received)
+//!
+//!  @return         none
+//!
+//!  @brief          Parse the incoming events packets and issues corresponding
+//!                  event handler from global array of handlers pointers
+//
+//*****************************************************************************
 extern unsigned char *hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen);
+
+//*****************************************************************************
+//
+//!  hci_unsol_event_handler
+//!
+//!  @param  event_hdr   event header
+//!
+//!  @return             1 if event supported and handled
+//!                      0 if event is not supported
+//!
+//!  @brief              Handle unsolicited events
+//
+//*****************************************************************************
 extern long hci_unsol_event_handler(char *event_hdr);
+
+//*****************************************************************************
+//
+//!  hci_unsolicited_event_handler
+//!
+//!  @param None
+//!
+//!  @return         ESUCCESS if successful, EFAIL if an error occurred
+//!
+//!  @brief          Parse the incoming unsolicited event packets and issues 
+//!                  corresponding event handler.
+//
+//*****************************************************************************
 extern long hci_unsolicited_event_handler(void);
 
 #define M_BSD_RESP_PARAMS_OFFSET(hci_event_hdr)((char *)(hci_event_hdr) + HCI_EVENT_HEADER_SIZE)
 
 #define SOCKET_STATUS_ACTIVE       0
 #define SOCKET_STATUS_INACTIVE     1
-/* Init socket_active_status = 'all ones': init all sockets with SOCKET_STATUS_INACTIVE.
-   Will be changed by 'set_socket_active_status' upon 'connect' and 'accept' calls */
+// Init socket_active_status = 'all ones': init all sockets with SOCKET_STATUS_INACTIVE.
+// Will be changed by 'set_socket_active_status' upon 'connect' and 'accept' calls 
 #define SOCKET_STATUS_INIT_VAL  0xFFFF
 #define M_IS_VALID_SD(sd) ((0 <= (sd)) && ((sd) <= 7))
 #define M_IS_VALID_STATUS(status) (((status) == SOCKET_STATUS_ACTIVE)||((status) == SOCKET_STATUS_INACTIVE))
@@ -76,7 +116,7 @@ typedef struct _bsd_accept_return_t
 {
     long             iSocketDescriptor;
     long             iStatus;
-    sockaddr   		tSocketAddress;
+    sockaddr        tSocketAddress;
     
 } tBsdReturnParams;
 
@@ -85,26 +125,26 @@ typedef struct _bsd_read_return_t
 {
     long             iSocketDescriptor;
     long             iNumberOfBytes;
-    unsigned long	 uiFlags;
+    unsigned long    uiFlags;
 } tBsdReadReturnParams;
 
-#define BSD_RECV_FROM_FROMLEN_OFFSET	(4)
-#define BSD_RECV_FROM_FROM_OFFSET		(16)
+#define BSD_RECV_FROM_FROMLEN_OFFSET    (4)
+#define BSD_RECV_FROM_FROM_OFFSET       (16)
 
 
 typedef struct _bsd_select_return_t
 {
-    long					iStatus;
-	unsigned long 			uiRdfd;
-	unsigned long 			uiWrfd;
-	unsigned long 			uiExfd;
+    long                    iStatus;
+    unsigned long           uiRdfd;
+    unsigned long           uiWrfd;
+    unsigned long           uiExfd;
 } tBsdSelectRecvParams;
 
 
 typedef struct _bsd_getsockopt_return_t
 {
-	unsigned char			ucOptValue[4];
-	char						iStatus;
+    unsigned char           ucOptValue[4];
+    char                        iStatus;
 } tBsdGetSockOptReturnParams;
 
 typedef struct _bsd_gethostbyname_return_t

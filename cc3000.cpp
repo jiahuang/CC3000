@@ -1,16 +1,20 @@
+#include "cc3000.h"
+
 #include <Arduino.h>
 #include <SPI.h>
-#include "cc3000.h"          
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include "utility/wlan.h"
-
-
+#include "utility/nvmem.h"
+#include "utility/security.h"
 #include "utility/hci.h"
 #include "utility/os.h"
 #include "utility/evnt_handler.h"
 
 
-#define READ                    0x03
-#define WRITE                   0x01
+#define READ                    3
+#define WRITE                   1
 
 #define HI(value)               (((value) & 0xFF00) >> 8)
 #define LO(value)               ((value) & 0x00FF)
@@ -38,17 +42,38 @@
 #define HOST_VBAT_SW_EN (9)
 #define LED 			(6)
 
+#define DISABLE										(0)
+
+#define ENABLE										(1)
+
 #define DEBUG_MODE		(1)
 
+#define NETAPP_IPCONFIG_MAC_OFFSET				(20)
+
+
+unsigned char tSpiReadHeader[] = {READ, 0, 0, 0, 0};
+int uart_have_cmd;
 
 //foor spi bus loop
 int loc = 0; 
 
-char ssid[] = "KYD03";                     // your network SSID (name) 
-unsigned char keys[] = "bellacody";       // your network key
-unsigned char bssid[] = "KYD03";       // your network key
-int keyIndex = 0; 
+char ssid[] = "default";                     // your network SSID (name) 
+unsigned char keys[] = "8AB620EDF6";       // your network key
+unsigned char bssid[] = {0x00, 0x11, 0x95, 0x41, 0x38, 0x65};       // your network key
 
+char device_name[] = "bobby";
+const char aucCC3000_prefix[] = {'T', 'T', 'T'};
+const unsigned char smartconfigkey[] = {0x73,0x6d,0x61,0x72,0x74,0x63,0x6f,0x6e,0x66,0x69,0x67,0x41,0x45,0x53,0x31,0x36};
+
+//00:11:95:41:38:65
+// unsigned char bssid[] = "000000";
+int keyIndex = 0; 
+unsigned char printOnce = 1;
+
+unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
+
+unsigned char ucStopSmartConfig;
+long ulSocket;
 
 typedef struct
 {
@@ -59,16 +84,10 @@ typedef struct
 	unsigned char *pTxPacket;
 	unsigned char *pRxPacket;
 
-}tSpiInformation;
+} tSpiInformation;
 
 
 tSpiInformation sSpiInformation;
-
-//
-// Static buffer for 5 bytes of SPI HEADER
-//
-unsigned char tSpiReadHeader[] = {READ, 0x00, 0x00};
-
 
 char SpiWriteDataSynchronous(unsigned char *data, unsigned short size);
 void SpiWriteAsync(const unsigned char *data, unsigned short size);
@@ -93,27 +112,9 @@ void SpiReadHeader(void);
 // *CCS does not initialize variables - therefore, __no_init is not needed.                             ///
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// #ifdef __CCS__
-// #pragma DATA_SECTION(spi_buffer, ".FRAM_DATA")
-// char spi_buffer[CC3000_RX_BUFFER_SIZE];
-
-// #elif __IAR_SYSTEMS_ICC__
-// #pragma location = "FRAM_DATA"
-// __no_init char spi_buffer[CC3000_RX_BUFFER_SIZE];
-// #endif
-
-
-
-//#ifdef __CCS__
-//#pragma DATA_SECTION(wlan_tx_buffer, ".FRAM_DATA")
 unsigned char wlan_tx_buffer[CC3000_TX_BUFFER_SIZE];
 unsigned char spi_buffer[CC3000_RX_BUFFER_SIZE];
 
-
-//#elif __IAR_SYSTEMS_ICC__
-//#pragma location = "FRAM_DATA"
-//__no_init unsigned char wlan_tx_buffer[CC3000_TX_BUFFER_SIZE];
-//#endif
 //*****************************************************************************
 // 
 //!  This function get the reason for the GPIO interrupt and clear cooresponding
@@ -127,8 +128,7 @@ unsigned char spi_buffer[CC3000_RX_BUFFER_SIZE];
 //!          and clear cooresponding interrupt flag
 // 
 //*****************************************************************************
-void
-SpiCleanGPIOISR(void)
+void SpiCleanGPIOISR(void)
 {
 	if (DEBUG_MODE)
 	{
@@ -190,26 +190,30 @@ void SpiOpen(gcSpiHandleRx pfRxHandler)
 		Serial.println("SpiOpen");
 	}
 
-    pinMode(CC3000_nIRQ, INPUT);
-    pinMode(HOST_nCS, OUTPUT);
-    pinMode(HOST_VBAT_SW_EN, OUTPUT);
+	//pinMode(CC3000_nIRQ, INPUT);
+	attachInterrupt(0, SPI_IRQ, FALLING); //Attaches Pin 2 to interrupt 1
+	
+	Serial.print("IRQ is at: ");
+	Serial.println(digitalRead(CC3000_nIRQ));
+	pinMode(HOST_nCS, OUTPUT);
+	pinMode(HOST_VBAT_SW_EN, OUTPUT);
 
-    //Initialize SPI
-    SPI.begin();
+	//Initialize SPI
+	SPI.begin();
 
-    //Set bit order to MSB first
-    SPI.setBitOrder(MSBFIRST);
+	//Set bit order to MSB first
+	SPI.setBitOrder(MSBFIRST);
 
-    //Set data mode to CPHA 0 and CPOL 0
-    SPI.setDataMode(SPI_MODE0);
+	//Set data mode to CPHA 0 and CPOL 0
+	SPI.setDataMode(SPI_MODE0);
 
-    //Set clock divider.  This will be different for each board
+	//Set clock divider.  This will be different for each board
 
-    //For Due, this sets to 4MHz.  CC3000 can go up to 26MHz
-    //SPI.setClockDivider(SS, SPI_CLOCK_DIV21);
+	//For Due, this sets to 4MHz.  CC3000 can go up to 26MHz
+	//SPI.setClockDivider(SS, SPI_CLOCK_DIV21);
 
-    //For other boards, cant select SS pin. Only divide by 4 to get 4MHz
-   	SPI.setClockDivider(SPI_CLOCK_DIV4);
+	//For other boards, cant select SS pin. Only divide by 4 to get 4MHz
+		SPI.setClockDivider(SPI_CLOCK_DIV4);
 
 
 	sSpiInformation.ulSpiState = eSPI_STATE_POWERUP;
@@ -261,65 +265,73 @@ long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 		Serial.println("SpiFirstWrite");
 	}
 
-   	digitalWrite(HOST_nCS, LOW);
+  digitalWrite(HOST_nCS, LOW);
 
 	delayMicroseconds(50);
 	
-    // SPI writes first 4 bytes of data
-    SpiWriteDataSynchronous(ucBuf, 4);
+	// SPI writes first 4 bytes of data
+	SpiWriteDataSynchronous(ucBuf, 4);
 
-    delayMicroseconds(50);
+	delayMicroseconds(50);
 	
-    SpiWriteDataSynchronous(ucBuf + 4, usLength - 4);
+	SpiWriteDataSynchronous(ucBuf + 4, usLength - 4);
 
-    // From this point on - operate in a regular way
+	// From this point on - operate in a regular way
 	sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
 
 	digitalWrite(HOST_nCS, HIGH);
 
-    return(0);
+	return(0);
 }
 
 long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 {
-  
 	if (DEBUG_MODE)
 	{
 		Serial.println("SpiWrite");
 	}
 
-    unsigned char ucPad = 0;
+	unsigned char ucPad = 0;
 
 	//
 	// Figure out the total length of the packet in order to figure out if there is padding or not
 	//
-    if(!(usLength & 0x0001))
-    {
-        ucPad++;
-    }
+	if(!(usLength & 0x0001))
+	{
+		ucPad++;
+	}
 	
-    pUserBuffer[0] = WRITE;
-    pUserBuffer[1] = HI(usLength + ucPad);
-    pUserBuffer[2] = LO(usLength + ucPad);
-    pUserBuffer[3] = 0;
-    pUserBuffer[4] = 0;
+	pUserBuffer[0] = WRITE;
+	pUserBuffer[1] = HI(usLength + ucPad);
+	pUserBuffer[2] = LO(usLength + ucPad);
+	pUserBuffer[3] = 0;
+	pUserBuffer[4] = 0;
 
-	usLength += (SPI_HEADER_SIZE);
+	usLength += (SPI_HEADER_SIZE + ucPad);
 
-        	
-        // The magic number that resides at the end of the TX/RX buffer (1 byte after the allocated size)
-        // for the purpose of detection of the overrun. If the magic number is overriten - buffer overrun 
-        // occurred - and we will stuck here forever!
+	// The magic number that resides at the end of the TX/RX buffer (1 byte after the allocated size)
+	// for the purpose of detection of the overrun. If the magic number is overriten - buffer overrun 
+	// occurred - and we will stuck here forever!
+	if (DEBUG_MODE)
+	{
+		Serial.println("p user buffer");
+		for (int i = 0; i< 5; i++){
+			Serial.println(pUserBuffer[i], DEC);
+		}
+		Serial.println("--");
+	}
 	if (wlan_tx_buffer[CC3000_TX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
 	{
 		while (1)
 			;
 	}
 
-
+	Serial.println("Checking for state");
+	print_spi_state();
 	if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
 	{
-		while (sSpiInformation.ulSpiState != eSPI_STATE_INITIALIZED)
+		while (sSpiInformation.ulSpiState != eSPI_STATE_INITIALIZED){
+		}
 			;
 	}
 	
@@ -334,6 +346,11 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 	else 
 	{
 		
+		// We need to prevent here race that can occur in case 2 back to back 
+		// packets are sent to the  device, so the state will move to IDLE and once 
+		//again to not IDLE due to IRQ
+		tSLInformation.WlanInterruptDisable();
+
 		while (sSpiInformation.ulSpiState != eSPI_STATE_IDLE)
 		{
 			;
@@ -342,9 +359,22 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		sSpiInformation.ulSpiState = eSPI_STATE_WRITE_IRQ;
 		sSpiInformation.pTxPacket = pUserBuffer;
 		sSpiInformation.usTxPacketLength = usLength;
-		
 
-   		digitalWrite(HOST_nCS, LOW);
+		// assert CS
+		digitalWrite(HOST_nCS, LOW);
+
+		// reenable IRQ
+		tSLInformation.WlanInterruptEnable();
+
+		// check for a missing interrupt between the CS assertion and enabling back the interrupts
+		if (tSLInformation.ReadWlanInterruptPin() == 0)
+		{
+			SpiWriteDataSynchronous(sSpiInformation.pTxPacket, sSpiInformation.usTxPacketLength);
+			sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
+
+			//deassert CS
+			digitalWrite(HOST_nCS, HIGH);
+		}
 
 	}
 	
@@ -355,7 +385,7 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 
 	while (eSPI_STATE_IDLE != sSpiInformation.ulSpiState)
 		;
-	
+	Serial.println("done with spi write");
     return(0);
 
 }
@@ -370,29 +400,37 @@ char SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 	
 	char result;
 
-	for (loc = 0; loc < size; loc ++) 
-	{
-
-		SPDR = data[loc];                    // Start the transmission
-		while (!(SPSR & (1<<SPIF)))     // Wait the end of the transmission
-	    	;
-		delayMicroseconds(50);
-	    result = SPDR;
+	while (size--) {
+		result = SPI.transfer(*data++);
 		if (DEBUG_MODE)
 		{
-			if (!(loc==size-1))
-			{
-				Serial.print(data[loc]); 
-				Serial.print(" ");
-			}
-			else
-			{
-				Serial.println(data[loc]);
-			}
+			Serial.println(result);
 		}
-
 	}
+	
+	// for (loc = 0; loc < size; loc ++) 
+	// {
+	// 	result = SPI.transfer(*data++);
+	// 	//SPDR = data[loc];                    // Start the transmission
+	// 	//while (!(SPSR & (1<<SPIF)))     // Wait the end of the transmission
+	//   //  	;
+	// 	//delayMicroseconds(50);
+	//   //  result = SPDR;
+	// 	if (DEBUG_MODE)
+	// 	{
+	// 		if (!(loc==size-1))
+	// 		{
+	// 			Serial.print(data[loc]); 
+	// 			Serial.print(" ");
+	// 		}
+	// 		else
+	// 		{
+	// 			Serial.println(data[loc]);
+	// 		}
+	// 	}
 
+	// }
+	
 	if (DEBUG_MODE)
 	{
 		Serial.println("SpiWriteDataSynchronous done.");
@@ -413,61 +451,19 @@ void SpiReadDataSynchronous(unsigned char *data, unsigned short size)
 		Serial.println("SpiReadDataSynchronous");
 	}
 
-	
-
-	int i = 0;
+	unsigned int i = 0;
 	
 	for (i = 0; i < size; i ++)
 	{
-		data[i] = SPI.transfer(0x00);
-		Serial.println(data[i]);
-    }
-	
-
-
-	/*
-	delayMicroseconds(50);
-    unsigned char result = SPDR;
-	delayMicroseconds(50);
-	
-	int i = 0;
-	while (!(result))
-	{
-		if (DEBUG_MODE)
-		{
-			Serial.print(result);
-			Serial.print(" ");
-		}
-		SPDR = i;
-		delayMicroseconds(50);
-		result = SPDR;
-
-	}
-
-	Serial.println(" ");
-	Serial.print("Result: ");
-	Serial.println(result);
-	*/
-	//while (!(SPSR & (1<<SPIF)))
-	//	;    // Wait the end of the transmission
-
-	/*for (int i = 0; i < 15; i ++)
-    {
-		//while (!(SPSR & (1<<SPIF)))     // Wait the end of the transmission
-			//Serial.print(digitalRead(CC3000_nIRQ));
-			
-			//;
-		
-		if (!(i==14))
-		{
-			data[i] = SPDR;
+		data[i] = SPI.transfer(tSpiReadHeader[0]); 
+		if (DEBUG_MODE) {
 			Serial.print(data[i]);
 		}
-		else
-		{
-			Serial.println(data[i]);
-		}
-    }*/
+	}
+	
+	if (DEBUG_MODE) {
+		Serial.println();
+	}
 
 }
 
@@ -479,10 +475,9 @@ void SpiReadHeader(void)
 		Serial.println("SpiReadHeader");
 	}
 
-	SpiWriteDataSynchronous(tSpiReadHeader, 3);
+	//SpiWriteDataSynchronous(tSpiReadHeader, 3);
 
 	SpiReadDataSynchronous(sSpiInformation.pRxPacket, 10);
-
 }
 
 
@@ -494,43 +489,45 @@ long SpiReadDataCont(void)
 	{
 		Serial.println("SpiReadDataCont");
 	}
-   
-    long data_to_recv;
+	long data_to_recv;
 	unsigned char *evnt_buff, type;
 
 	
-    //
-    //determine what type of packet we have
-    //
-    evnt_buff =  sSpiInformation.pRxPacket;
-    data_to_recv = 0;
-	STREAM_TO_UINT8((char *)(evnt_buff + SPI_HEADER_SIZE), HCI_PACKET_TYPE_OFFSET, type);
+	//
+	//determine what type of packet we have
+	//
+	evnt_buff =  sSpiInformation.pRxPacket;
+	data_to_recv = 0;
+	STREAM_TO_UINT8((char *)(evnt_buff + SPI_HEADER_SIZE), 
+		HCI_PACKET_TYPE_OFFSET, type);
 	
-    switch(type)
+  switch(type)
+  {
+    case HCI_TYPE_DATA:
     {
-        case HCI_TYPE_DATA:
-        {
 			//
 			// We need to read the rest of data..
 			//
-			STREAM_TO_UINT16((char *)(evnt_buff + SPI_HEADER_SIZE), HCI_DATA_LENGTH_OFFSET, data_to_recv);
+			STREAM_TO_UINT16((char *)(evnt_buff + SPI_HEADER_SIZE), 
+				HCI_DATA_LENGTH_OFFSET, data_to_recv);
 			if (!((HEADERS_SIZE_EVNT + data_to_recv) & 1))
-			{	
-    	        data_to_recv++;
+			{
+				data_to_recv++;
 			}
 
 			if (data_to_recv)
 			{
-            	SpiReadDataSynchronous(evnt_buff + 10, data_to_recv);
+				SpiReadDataSynchronous(evnt_buff + 10, data_to_recv);
 			}
-            break;
-        }
-        case HCI_TYPE_EVNT:
-        {
-			// 
-			// Calculate the rest length of the data
-			//
-            STREAM_TO_UINT8((char *)(evnt_buff + SPI_HEADER_SIZE), HCI_EVENT_LENGTH_OFFSET, data_to_recv);
+			break;
+		}
+		case HCI_TYPE_EVNT:
+		{
+		// 
+		// Calculate the rest length of the data
+		//
+			STREAM_TO_UINT8((char *)(evnt_buff + SPI_HEADER_SIZE), 
+				HCI_EVENT_LENGTH_OFFSET, data_to_recv);
 			data_to_recv -= 1;
 			
 			// 
@@ -538,41 +535,41 @@ long SpiReadDataCont(void)
 			//
 			if ((HEADERS_SIZE_EVNT + data_to_recv) & 1)
 			{
-				
-	            data_to_recv++;
+				data_to_recv++;
 			}
 			
 			if (data_to_recv)
 			{
-            	SpiReadDataSynchronous(evnt_buff + 10, data_to_recv);
+				SpiReadDataSynchronous(evnt_buff + 10, data_to_recv);
 			}
 
 			sSpiInformation.ulSpiState = eSPI_STATE_READ_EOT;
-            break;
-        }
-    }
+			break;
+		}
+	}
 	
-     return (0);
+	return (0);
 }
 
 void SpiPauseSpi(void)
 {
-
 	if (DEBUG_MODE)
 	{
 		Serial.println("SpiPauseSpi");
 	}
-	// SPI_IRQ_PORT &= ~SPI_IRQ_PIN;
+
+	detachInterrupt(0);	//Detaches Pin 3 from interrupt 1
 }
 
 void SpiResumeSpi(void)
 {
-
 	if (DEBUG_MODE)
 	{
 		Serial.println("SpiResumeSpi");
 	}
-	// SPI_IRQ_PORT |= SPI_IRQ_PIN;
+
+	attachInterrupt(0, SPI_IRQ, FALLING); //Attaches Pin 2 to interrupt 1
+
 }
 
 void SpiTriggerRxProcessing(void)
@@ -585,36 +582,297 @@ void SpiTriggerRxProcessing(void)
 	// //
 	// // Trigger Rx processing
 	// //
-	// SpiPauseSpi();
-	// DEASSERT_CS();
-        
- //        // The magic number that resides at the end of the TX/RX buffer (1 byte after the allocated size)
- //        // for the purpose of detection of the overrun. If the magic number is overriten - buffer overrun 
- //        // occurred - and we will stuck here forever!
-	// if (sSpiInformation.pRxPacket[CC3000_RX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
-	// {
-	// 	while (1)
-	// 		;
-	// }
+	SpiPauseSpi();
+	//DEASSERT_CS();
+	digitalWrite(HOST_nCS, HIGH);
+
+	// The magic number that resides at the end of the TX/RX buffer (1 byte after 
+	// the allocated size) for the purpose of detection of the overrun. If the 
+	// magic number is overwritten - buffer overrun occurred - and we will stuck 
+	// here forever!
+	if (sSpiInformation.pRxPacket[CC3000_RX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
+	{
+		while (1) {
+			;
+		}
+	}
 	
-	// sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
-	// sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + SPI_HEADER_SIZE);
+	sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
+	sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + SPI_HEADER_SIZE);
 }
 
-int test(void)
+// void recvTCP(){
+
+// }
+
+// void sendTCP(){
+
+// }
+
+// void recvUDP(){
+
+// }
+
+//*****************************************************************************
+//
+//! atoc
+//!
+//! @param  none
+//!
+//! @return none
+//!
+//! @brief  Convert nibble to hexdecimal from ASCII
+//
+//*****************************************************************************
+unsigned char atoc(char data)
 {
+	unsigned char ucRes;
+
+	if ((data >= 0x30) && (data <= 0x39))
+	{
+		ucRes = data - 0x30;
+	}
+	else
+	{
+		if (data == 'a')
+		{
+			ucRes = 0x0a;;
+		}
+		else if (data == 'b')
+		{
+			ucRes = 0x0b;
+		}
+		else if (data == 'c')
+		{
+			ucRes = 0x0c;
+		}
+		else if (data == 'd')
+		{
+			ucRes = 0x0d;
+		}
+		else if (data == 'e')
+		{
+			ucRes = 0x0e;
+		}
+		else if (data == 'f')
+		{
+			ucRes = 0x0f;
+		}
+	}
+	return ucRes;
+}
+
+
+unsigned char ascii_to_char(char b1, char b2)
+{
+	unsigned char ucRes;
+
+	ucRes = (atoc(b1)) << 4 | (atoc(b2));
+
+	return ucRes;
+}
+
+
+void sendUDP(){
+	sockaddr tSocketAddr;
+	while ((ulCC3000DHCP == 0) || (ulCC3000Connected == 0))
+	{
+		delayMicroseconds(100);
+	}
+
+	// open a socket
+	ulSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+	//toggleLed(2);
+	// data pointer
+	//pcData = (char *)&usBuffer[4];
+	
+	// data length to send
+	//ulDataLength = atoshort(usBuffer[2], usBuffer[3]);
+	
+	//pcSockAddrAscii = (pcData + ulDataLength);
+		
+	// the family is always AF_INET
+	//tSocketAddr.sa_family = atoshort(pcSockAddrAscii[0], pcSockAddrAscii[1]);
+	tSocketAddr.sa_family = 2;//atoshort(0, 2);
+
+	// the destination port
+	//tSocketAddr.sa_data[0] = ascii_to_char(pcSockAddrAscii[2], pcSockAddrAscii[3]);
+	//tSocketAddr.sa_data[1] = ascii_to_char(pcSockAddrAscii[4], pcSockAddrAscii[5]);
+	tSocketAddr.sa_data[0] = ascii_to_char(0x01, 0x01);
+	tSocketAddr.sa_data[1] = ascii_to_char(0x05, 0x0c);
+
+	// the destination IP address
+//		tSocketAddr.sa_data[2] = ascii_to_char(pcSockAddrAscii[6], pcSockAddrAscii[7]);
+//		tSocketAddr.sa_data[3] = ascii_to_char(pcSockAddrAscii[8], pcSockAddrAscii[9]);
+//		tSocketAddr.sa_data[4] = ascii_to_char(pcSockAddrAscii[10], pcSockAddrAscii[11]);
+//		tSocketAddr.sa_data[5] = ascii_to_char(pcSockAddrAscii[12], pcSockAddrAscii[13]);
+	tSocketAddr.sa_data[2] = ascii_to_char(0x00, 0x0a);
+	tSocketAddr.sa_data[3] = ascii_to_char(0x00, 0x01);
+	tSocketAddr.sa_data[4] = ascii_to_char(0x05, 0x0a);
+	tSocketAddr.sa_data[5] = ascii_to_char(0x08, 0x07);
+	
+	sendto(ulSocket, "test", 4, 0, &tSocketAddr, sizeof(sockaddr));
+
+	// close a socket
+	closesocket(ulSocket);
+	ulSocket = 0xFFFFFFFF;
+}
+
+void initialize(void){
+
+	digitalWrite(HOST_nCS, HIGH);
 
 	Serial.println("Calling wlan_init");
-	wlan_init(CC3000_UsynchCallback, NULL, NULL, NULL, ReadWlanInterruptPin, WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
-
+	wlan_init(CC3000_UsynchCallback, NULL, NULL, NULL, ReadWlanInterruptPin, 
+		WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
 
 	Serial.println("Calling wlan_start...");
 	wlan_start(0);
 
-	Serial.println("Attempting to connect...");
-	wlan_connect(WLAN_SEC_UNSEC,ssid,10, bssid, keys, 16);
+	Serial.println("setting event mask");
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+
+	//Serial.println("Attempting to connect...");
+	//wlan_connect(WLAN_SEC_WEP,ssid,7, bssid, keys, 10);
+
+}
+
+int test(void)
+{
+	ulCC3000DHCP = 0;
+	ulCC3000Connected = 0;
+	ulSocket = 0;
+	ulSmartConfigFinished=0;
+
+	initialize();
+
+	// Initialize the UART RX Buffer   
+	uart_have_cmd =0;    
+
+	// Loop forever waiting  for commands from PC...
+	while (1)
+	{
+
+		// if (uart_have_cmd)
+		// {
+
+		// 	wakeup_timer_disable();
+		// 	//Process the cmd in RX buffer
+		// 	DemoHandleUartCommand(g_ucUARTBuffer);
+		// 	uart_have_cmd = 0;
+		// 	memset(g_ucUARTBuffer, 0xFF, UART_IF_BUFFER);			
+		// 	wakeup_timer_init();
+		// }
+		
+		// complete smart config process:
+		// 1. if smart config is done 
+		// 2. CC3000 established AP connection
+		// 3. DHCP IP is configured
+		// then send mDNS packet to stop external SmartConfig application
+		if ((ucStopSmartConfig == 1) && (ulCC3000DHCP == 1) 
+			&& (ulCC3000Connected == 1))
+		{
+			unsigned char loop_index = 0;
+			
+			while (loop_index < 3)
+			{
+				mdnsAdvertiser(1,device_name,strlen(device_name));
+				loop_index++;
+			}
+			
+			ucStopSmartConfig = 0;
+		}
+		
+		if( (ulCC3000DHCP == 1) && (ulCC3000Connected == 1)  
+			&& (printOnce == 1) ) 
+		{
+			printOnce = 0;
+			//DispatcherUartSendPacket((unsigned char*)pucCC3000_Rx_Buffer, strlen((char const*)pucCC3000_Rx_Buffer));
+		}
+		
+	}
+
+	// send packet
+	sendUDP();
 
 	return(0);
+}
+
+
+void StartSmartConfig(void)
+{
+	ulSmartConfigFinished = 0;
+	ulCC3000Connected = 0;
+	ulCC3000DHCP = 0;
+	OkToDoShutDown=0;
+	
+	// Reset all the previous configuration
+	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);	
+	wlan_ioctl_del_profile(255);
+	
+	//Wait until CC3000 is disconnected
+	while (ulCC3000Connected == 1)
+	{
+		delayMicroseconds(100);
+	}
+	
+	// Trigger the Smart Config process
+	// Start blinking LED6 during Smart Configuration process
+	digitalWrite(6, HIGH);	
+	wlan_smart_config_set_prefix((char*)aucCC3000_prefix);
+	digitalWrite(6, LOW);	     
+	
+	// Start the SmartConfig start process
+	wlan_smart_config_start(1);
+	
+	//turnLedOn(6);                                                                               
+	
+	// Wait for Smartconfig process complete
+	while (ulSmartConfigFinished == 0)
+	{
+		delayMicroseconds(100);
+
+		//__delay_cycles(6000000);
+		
+		digitalWrite(6, LOW);
+		
+		//__delay_cycles(6000000);
+		delayMicroseconds(100);
+
+		digitalWrite(6, HIGH);  
+		
+	}
+	
+	//turnLedOn(6);
+  
+#ifndef CC3000_UNENCRYPTED_SMART_CONFIG
+	// create new entry for AES encryption key
+	nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
+	
+	// write AES key to NVMEM
+	aes_write_key((unsigned char *)(&smartconfigkey[0]));
+	
+	// Decrypt configuration information and add profile
+	wlan_smart_config_process();
+#endif    
+	
+	// Configure to connect automatically to the AP retrieved in the 
+	// Smart config process
+	wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
+	
+	// reset the CC3000
+	wlan_stop();
+	
+	delayMicroseconds(100);
+	//__delay_cycles(6000000);
+	
+	//DispatcherUartSendPacket((unsigned char*)pucUARTCommandSmartConfigDoneString, sizeof(pucUARTCommandSmartConfigDoneString));
+	Serial.print("Config done");
+	wlan_start(0);
+	
+	// Mask out all non-required events
+	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 }
 
 
@@ -630,7 +888,8 @@ long ReadWlanInterruptPin(void)
 
 	if (DEBUG_MODE)
 	{
-		Serial.println("ReadWlanInterruptPin");
+		Serial.print("ReadWlanInterruptPin: ");
+		Serial.println(digitalRead(CC3000_nIRQ));
 	}
 
 	return(digitalRead(CC3000_nIRQ));
@@ -646,8 +905,9 @@ void WlanInterruptEnable()
 		Serial.println("WlanInterruptEnable.");
 		delayMicroseconds(50);
 	}
+	Serial.print("IRQ is currently at ");
 	Serial.println(digitalRead(CC3000_nIRQ));
-	attachInterrupt(1, SPI_IRQ, FALLING); //Attaches Pin 3 to interrupt 1
+	attachInterrupt(0, SPI_IRQ, FALLING); //Attaches Pin 2 to interrupt 1
 }
 
 
@@ -658,21 +918,22 @@ void WlanInterruptDisable()
 		Serial.println("WlanInterruptDisable");
 	}
 
-	detachInterrupt(1);	//Detaches Pin 3 from interrupt 1
+	detachInterrupt(0);	//Detaches Pin 3 from interrupt 1
 }
 
 void SPI_IRQ(void)
 {
+	Serial.println("SPI_IRQ called");
 	if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
 	{
-		/* This means IRQ line was low call a callback of HCI Layer to inform on event */
+		//This means IRQ line was low call a callback of HCI Layer to inform on event 
 		sSpiInformation.ulSpiState = eSPI_STATE_INITIALIZED;
 	}
 	else if (sSpiInformation.ulSpiState == eSPI_STATE_IDLE)
 	{
 		sSpiInformation.ulSpiState = eSPI_STATE_READ_IRQ;
 		digitalWrite(LED,HIGH);
-		/* IRQ line goes down - we are start reception */
+		//IRQ line goes down - we are start reception
 		digitalWrite(HOST_nCS, LOW);
 		digitalWrite(LED,LOW);
 		//
@@ -682,16 +943,13 @@ void SPI_IRQ(void)
 
 
 		sSpiInformation.ulSpiState = eSPI_STATE_READ_EOT;
-			
-			//
-			//
-			//
 		SSIContReadOperation();
 	}
 	else if (sSpiInformation.ulSpiState == eSPI_STATE_WRITE_IRQ)
 	{
 
-		SpiWriteDataSynchronous(sSpiInformation.pTxPacket, sSpiInformation.usTxPacketLength);
+		SpiWriteDataSynchronous(sSpiInformation.pTxPacket, 
+			sSpiInformation.usTxPacketLength);
 
 		sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
 
@@ -701,7 +959,6 @@ void SPI_IRQ(void)
 	return;
 
 }
-
 void print_spi_state(void)
 {
 	if (DEBUG_MODE)
@@ -747,8 +1004,7 @@ void print_spi_state(void)
 
 void WriteWlanPin( unsigned char val )
 {
-    
-    if (DEBUG_MODE)
+	if (DEBUG_MODE)
 	{
 		Serial.print("WriteWlanPin: ");
 		Serial.println(val);
@@ -762,7 +1018,6 @@ void WriteWlanPin( unsigned char val )
 	{
 		digitalWrite(HOST_VBAT_SW_EN, LOW);
 	}
-		
 
 }
 
@@ -782,32 +1037,67 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 		Serial.println("CC3000_UsynchCallback");
 	}
 
-  
-	// if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE)
-	// {
-	// 	//config complete
-	// }
+	if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE)
+	{
+		ulSmartConfigFinished = 1;
+		ucStopSmartConfig     = 1;  
+	}
+	
+	if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT)
+	{
+		ulCC3000Connected = 1;
+		
+		// Turn on the LED7
+		//turnLedOn(7);
+	}
+	
+	if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT)
+	{		
+		ulCC3000Connected = 0;
+		ulCC3000DHCP      = 0;
+		ulCC3000DHCP_configured = 0;
+		printOnce = 1;
+		
+		// Turn off the LED7
+		//turnLedOff(7);
+		
+		// Turn off LED5
+		//turnLedOff(8);          
+	}
+	
+	if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP)
+	{
+		// Notes: 
+		// 1) IP config parameters are received swapped
+		// 2) IP config parameters are valid only if status is OK, i.e. ulCC3000DHCP becomes 1
+		
+		// only if status is OK, the flag is set to 1 and the addresses are valid
+		if ( *(data + NETAPP_IPCONFIG_MAC_OFFSET) == 0)
+		{
+			Serial.print("Ip: ");
+			Serial.print(data[3]);
+			Serial.print(data[2]);
+			Serial.print(data[1]);
+			Serial.println(data[0]);
 
-	// if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT)
-	// {
-	// 	//connected
-	// }
+			//sprintf( (char*)pucCC3000_Rx_Buffer,"IP:%d.%d.%d.%d\f\r", data[3],data[2], data[1], data[0] );
 
-	// if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT)
-	// {		
- //            //disconnected        
-	// }
-        
-	// if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP)
-	// {
- //             //dhcp
-	// }
-        
-	// if (lEventType == HCI_EVENT_CC3000_CAN_SHUT_DOWN)
-	// {
-	// 	//ready to shut down
-	// }
+			ulCC3000DHCP = 1;
 
+			//turnLedOn(8);
+		}
+		else
+		{
+			ulCC3000DHCP = 0;
+
+			//turnLedOff(8);
+		}
+	}
+	
+	if (lEventType == HCI_EVENT_CC3000_CAN_SHUT_DOWN)
+	{
+		OkToDoShutDown = 1;
+	}
 }
 
 
@@ -824,8 +1114,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 
 // *****************************************************************************
 
-void
-SSIContReadOperation(void)
+void SSIContReadOperation(void)
 {
 	//
 	// The header was read - continue with  the payload read
@@ -841,3 +1130,4 @@ SSIContReadOperation(void)
 		SpiTriggerRxProcessing();
 	}
 }
+
