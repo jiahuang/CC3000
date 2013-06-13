@@ -12,5 +12,14 @@ void setup() {
 }
 
 void loop() {
-
+ if ( Serial.available() )
+  {
+    char c = toupper(Serial.read());
+    if ( c == 'S' )
+    {
+      Serial.println("S");
+      sendUDP();
+      //StartSmartConfig();
+    }
+  }
 }

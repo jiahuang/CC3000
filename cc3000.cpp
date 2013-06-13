@@ -667,10 +667,10 @@ unsigned char ascii_to_char(char b1, char b2)
 
 void sendUDP(){
 	sockaddr tSocketAddr;
-	// while ((ulCC3000DHCP == 0) || (ulCC3000Connected == 0))
-	// {
-	// 	delayMicroseconds(100);
-	// }
+	while ((ulCC3000DHCP == 0) || (ulCC3000Connected == 0))
+	{
+		delayMicroseconds(100);
+	}
 
 	// open a socket
 	ulSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -686,34 +686,33 @@ void sendUDP(){
 		
 	// the family is always AF_INET
 	//tSocketAddr.sa_family = atoshort(pcSockAddrAscii[0], pcSockAddrAscii[1]);
-	tSocketAddr.sa_family = 2;//atoshort(0, 2);
+	tSocketAddr.sa_family = AF_INET;//atoshort(0, 2);
 
 	// the destination port
 	//tSocketAddr.sa_data[0] = ascii_to_char(pcSockAddrAscii[2], pcSockAddrAscii[3]);
 	//tSocketAddr.sa_data[1] = ascii_to_char(pcSockAddrAscii[4], pcSockAddrAscii[5]);
-	tSocketAddr.sa_data[0] = ascii_to_char(0x01, 0x01);
-	tSocketAddr.sa_data[1] = ascii_to_char(0x05, 0x0c);
+	tSocketAddr.sa_data[0] = 0x11;//ascii_to_char(0x01, 0x01);
+	tSocketAddr.sa_data[1] = 0x5c;//ascii_to_char(0x05, 0x0c);
 
 	// the destination IP address
 //		tSocketAddr.sa_data[2] = ascii_to_char(pcSockAddrAscii[6], pcSockAddrAscii[7]);
 //		tSocketAddr.sa_data[3] = ascii_to_char(pcSockAddrAscii[8], pcSockAddrAscii[9]);
 //		tSocketAddr.sa_data[4] = ascii_to_char(pcSockAddrAscii[10], pcSockAddrAscii[11]);
 //		tSocketAddr.sa_data[5] = ascii_to_char(pcSockAddrAscii[12], pcSockAddrAscii[13]);
-	tSocketAddr.sa_data[2] = ascii_to_char(0x00, 0x0a);
-	tSocketAddr.sa_data[3] = ascii_to_char(0x00, 0x01);
-	tSocketAddr.sa_data[4] = ascii_to_char(0x05, 0x0a);
-	tSocketAddr.sa_data[5] = ascii_to_char(0x08, 0x07);
-	Serial.println("sending to socket");
-	sendto(ulSocket, "test", 4, 0, &tSocketAddr, sizeof(sockaddr));
+	tSocketAddr.sa_data[2] = 10;//ascii_to_char(0x00, 0x0a);
+	tSocketAddr.sa_data[3] = 1;//ascii_to_char(0x00, 0x01);
+	tSocketAddr.sa_data[4] = 90;//ascii_to_char(0x05, 0x0a);
+	tSocketAddr.sa_data[5] = 135;//ascii_to_char(0x08, 0x07);
+	
+	// Serial.println("sending to socket");
+	sendto(ulSocket, "haha", 4, 0, &tSocketAddr, sizeof(sockaddr));
 
 	// close a socket
-	closesocket(ulSocket);
-	ulSocket = 0xFFFFFFFF;
+	// closesocket(ulSocket);
+	// ulSocket = 0xFFFFFFFF;
 }
 
 void initialize(void){
-
-	
 	// digitalWrite(HOST_nCS, HIGH);
 
 	Serial.println("Calling wlan_init");
@@ -727,9 +726,12 @@ void initialize(void){
 	Serial.println("setting event mask");
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
+	Serial.println("config wlan");
+	wlan_ioctl_set_connection_policy(0, 0, 0);
+
 	Serial.println("Attempting to connect...");
 	int connected = -1;
-	connected = wlan_connect(WLAN_SEC_WPA2,ssid,8, bssid, keys, 8);
+	connected = wlan_connect(WLAN_SEC_WPA2,ssid,8, 0, keys, 8);
 	Serial.println(connected);
 	// unsigned char version[2];
 	// if (!nvmem_read_sp_version(version))
@@ -797,7 +799,10 @@ int test(void)
 		
 	}
 	*/
-
+	// while(1) {
+	// 	hci_unsolicited_event_handler();
+	// 	delayMicroseconds(500);
+	// }
 	Serial.println("done testing");
 	return(0);
 }
@@ -899,11 +904,11 @@ int test(void)
 long ReadWlanInterruptPin(void)
 {
 
-	if (DEBUG_MODE)
-	{
-		Serial.print("ReadWlanInterruptPin: ");
-		Serial.println(digitalRead(CC3000_nIRQ));
-	}
+	// if (DEBUG_MODE)
+	// {
+	// 	Serial.print("ReadWlanInterruptPin: ");
+	// 	Serial.println(digitalRead(CC3000_nIRQ));
+	// }
 
 	return(digitalRead(CC3000_nIRQ));
 
@@ -938,9 +943,7 @@ void WlanInterruptDisable()
 void SPI_IRQ(void)
 {
 	//Serial.println("SPI_IRQ called");
-	// if (STATE == 1){
-	// 	digitalWrite(DEBUG_LED, HIGH);
-	// }
+
 	// print_spi_state();
 	if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
 	{
@@ -1055,11 +1058,11 @@ void WriteWlanPin( unsigned char val )
 
 void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 {
-
-	if (DEBUG_MODE)
-	{
-		Serial.println("CC3000_UsynchCallback");
-	}
+	
+	// if (DEBUG_MODE)
+	// {
+	// 	Serial.println("CC3000_UsynchCallback");
+	// }
 
 	if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE)
 	{
@@ -1070,7 +1073,10 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 	if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT)
 	{
 		ulCC3000Connected = 1;
-		
+		Serial.println("connected");
+		if (DEBUG_MODE) {
+			digitalWrite(DEBUG_LED, HIGH);
+		}
 		// Turn on the LED7
 		//turnLedOn(7);
 	}
@@ -1091,6 +1097,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 	
 	if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP)
 	{
+
 		// Notes: 
 		// 1) IP config parameters are received swapped
 		// 2) IP config parameters are valid only if status is OK, i.e. ulCC3000DHCP becomes 1
@@ -1098,11 +1105,11 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 		// only if status is OK, the flag is set to 1 and the addresses are valid
 		if ( *(data + NETAPP_IPCONFIG_MAC_OFFSET) == 0)
 		{
-			Serial.print("Ip: ");
-			Serial.print(data[3]);
-			Serial.print(data[2]);
-			Serial.print(data[1]);
-			Serial.println(data[0]);
+			// Serial.print("Ip: ");
+			// Serial.println(data[3], DEC);
+			// Serial.println(data[2], DEC);
+			// Serial.println(data[1], DEC);
+			// Serial.println(data[0], DEC);
 
 			//sprintf( (char*)pucCC3000_Rx_Buffer,"IP:%d.%d.%d.%d\f\r", data[3],data[2], data[1], data[0] );
 
@@ -1113,7 +1120,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 		else
 		{
 			ulCC3000DHCP = 0;
-
+			Serial.println("DHCP failed");
 			//turnLedOff(8);
 		}
 	}
