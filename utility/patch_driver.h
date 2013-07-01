@@ -1,11 +1,6 @@
-
-
-//#include <string.h>
-//#include <stdlib.h>
-//#include <stdio.h>
-//#include "utility/wlan.h"
-
-
+// header file for patch_driver.c
+#ifndef __PATCHDRIVER_H__
+#define __PATCHDRIVER_H__
 
 //*****************************************************************************
 //
@@ -13,21 +8,20 @@
 // have a C binding.
 //
 //*****************************************************************************
-#ifndef __CC3000_H__
-#define __CC3000_H__
-
 #ifdef  __cplusplus
 extern "C" {
 #endif
+
+//*****************************************************************************
 
 //*****************************************************************************
 //
 // Prototypes for the APIs.
 //
 //*****************************************************************************
-extern int test(void);
-extern void SPI_IRQ(void);
-extern void SpiInit(void);
+
+extern void patch_driver(void);
+
 
 //*****************************************************************************
 //
@@ -38,6 +32,5 @@ extern void SpiInit(void);
 }
 #endif // __cplusplus
 
-//#endif
-#endif // __CC3000_H__
+#endif // __PATCHDRIVER_H__
 
