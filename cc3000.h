@@ -1,10 +1,10 @@
-
-
-//#include <string.h>
-//#include <stdlib.h>
-//#include <stdio.h>
-//#include "utility/wlan.h"
-
+#include <Arduino.h>
+#include <SPI.h>
+#include <string.h>
+#include "utility/cc3000_spi.h"
+#include "utility/nvmem.h"
+#include "utility/wlan.h"
+#include "utility/hci.h"
 
 
 //*****************************************************************************

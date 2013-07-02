@@ -1,13 +1,5 @@
 #include "cc3000.h"
 
-#include <Arduino.h>
-#include <SPI.h>
-#include <string.h>
-#include "utility/cc3000_spi.h"
-#include "utility/nvmem.h"
-#include "utility/wlan.h"
-#include "utility/hci.h"
-
 char ssid[] = "HCPGuest";                     // your network SSID (name) 
 unsigned char keys[] = "kendall!";       // your network key
 int connected = -1;
