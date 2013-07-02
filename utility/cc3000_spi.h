@@ -17,8 +17,8 @@ typedef void (*gcSpiHandleTx)(void);
 extern unsigned char wlan_tx_buffer[];
 extern unsigned char spi_buffer[];
 
-extern unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
-extern long ulSocket;
+// extern unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
+// extern long ulSocket;
 
 // #define MOSI_MISO_PORT_SEL    P1SEL1
 // #define MOSI_MISO_PORT_SEL2   P1SEL0

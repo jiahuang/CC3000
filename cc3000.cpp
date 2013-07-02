@@ -23,7 +23,7 @@ int connected = -1;
 // unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
 unsigned char pucCC3000_Rx_Buffer[CC3000_APP_BUFFER_SIZE + CC3000_RX_BUFFER_OVERHEAD_SIZE] = { 0 };
 
-unsigned char ucStopSmartConfig;
+// unsigned char ucStopSmartConfig;
 // long ulSocket;
 
 
@@ -106,6 +106,14 @@ void sendUDP(){
 	tSocketAddr.sa_data[5] = 135;
 	
 	sendto(ulSocket, "haha", 4, 0, &tSocketAddr, sizeof(sockaddr));
+}
+
+void getIpAddr(char * ipBuffer){
+  tNetappIpconfigRetArgs ipinfo;
+  netapp_ipconfig(&ipinfo);
+  // iptostring(ipinfo.aucIP, ipBuffer);
+  // DispatcherUartSendPacket("Ip = ", 5);
+  // DispatcherUartSendPacket((unsigned char*) ipvalue, length);
 }
 
 void printMAC(void){

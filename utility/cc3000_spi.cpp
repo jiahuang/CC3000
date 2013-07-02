@@ -70,10 +70,10 @@ const unsigned char smartconfigkey[] = {0x73,0x6d,0x61,0x72,0x74,0x63,0x6f,0x6e,
 int keyIndex = 0; 
 unsigned char printOnce = 1;
 
-// unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
+unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
 
 unsigned char ucStopSmartConfig;
-// long ulSocket;
+long ulSocket;
 
 typedef struct
 {
@@ -89,7 +89,7 @@ typedef struct
 sockaddr tSocketAddr;
 tSpiInformation sSpiInformation;
 
-unsigned char pucCC3000_Rx_Buffer[CC3000_APP_BUFFER_SIZE + CC3000_RX_BUFFER_OVERHEAD_SIZE];
+// unsigned char pucCC3000_Rx_Buffer[CC3000_APP_BUFFER_SIZE + CC3000_RX_BUFFER_OVERHEAD_SIZE];
 
 void SpiWriteDataSynchronous(unsigned char *data, unsigned short size);
 void SpiWriteAsync(const unsigned char *data, unsigned short size);
@@ -627,80 +627,6 @@ void SpiTriggerRxProcessing(void)
 //   }
 //   return (uLength-1);
 // }
-
-void getIpAddr(char * ipBuffer){
-  tNetappIpconfigRetArgs ipinfo;
-  netapp_ipconfig(&ipinfo);
-  // iptostring(ipinfo.aucIP, ipBuffer);
-  // DispatcherUartSendPacket("Ip = ", 5);
-  // DispatcherUartSendPacket((unsigned char*) ipvalue, length);
-}
-
-void recvUDP(){
-  // Serial.println("called recv");
-  socklen_t tRxPacketLength;
-
-  int iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer, 
-    CC3000_APP_BUFFER_SIZE, 0, &tSocketAddr, &tRxPacketLength);
-  if (iReturnValue <= 0)
-  {       
-    // No data received by device
-    Serial.println("no data recieved");
-  }
-  else
-  {
-    // Send data to UART...
-    Serial.print("Recieved: ");
-    Serial.println((char *)pucCC3000_Rx_Buffer);
-  }
-}
-
-void bindUDP(){
-  tSocketAddr.sa_family = AF_INET;
-    
-  // the source port
-  tSocketAddr.sa_data[0] = 0x11;
-  tSocketAddr.sa_data[1] = 0x5c;
-  
-  // all 0 IP address
-  tSocketAddr.sa_data[2] = 0;
-  tSocketAddr.sa_data[3] = 0;
-  tSocketAddr.sa_data[4] = 0;
-  tSocketAddr.sa_data[5] = 0;
-  
-  bind(ulSocket, &tSocketAddr, sizeof(sockaddr));
-}
-
-// open a udp socket
-void openUDPSocket(){
-  ulSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-}
-
-// close a udp socket
-void closeUDPSocket(){
-  closesocket(ulSocket);
-  ulSocket = 0xFFFFFFFF;
-}
-
-void sendUDP(){
-  
-  while ((ulCC3000DHCP == 0) || (ulCC3000Connected == 0))
-  {
-    delayMicroseconds(100);
-  }
-  tSocketAddr.sa_family = AF_INET;
-  // the destination port
-  tSocketAddr.sa_data[0] = 0x11;
-  tSocketAddr.sa_data[1] = 0x5c;
-
-  // the destination IP address
-  tSocketAddr.sa_data[2] = 10;
-  tSocketAddr.sa_data[3] = 1;
-  tSocketAddr.sa_data[4] = 90;
-  tSocketAddr.sa_data[5] = 135;
-  
-  sendto(ulSocket, "haha", 4, 0, &tSocketAddr, sizeof(sockaddr));
-}
 
 // void FinishSmartConfig(void) {
 //  mdnsAdvertiser(1,device_name,strlen(device_name));
