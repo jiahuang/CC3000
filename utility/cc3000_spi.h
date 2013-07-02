@@ -73,18 +73,6 @@ extern void SpiTriggerRxProcessing(void);
 // info
 extern void getIpAddr(char * ipBuffer);
 
-// udp stuff
-extern void sendUDP(void);
-extern void recvUDP(void);
-extern void bindUDP(void);
-extern void openUDPSocket(void);
-extern void closeUDPSocket(void);
-
-// tcp stuff
-extern void sendTCP(void);
-extern void openTCPSocket(void);
-extern void closeTCPSocket(void);
-
 //*****************************************************************************
 //
 // Mark the end of the C bindings section for C++ compilers.

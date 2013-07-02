@@ -8,6 +8,7 @@
 #include "netapp.h"
 #include "evnt_handler.h"
 #include "cc3000_spi.h"
+#include "debug.h"
 
 #define READ                    3
 #define WRITE                   1
@@ -70,10 +71,10 @@ const unsigned char smartconfigkey[] = {0x73,0x6d,0x61,0x72,0x74,0x63,0x6f,0x6e,
 int keyIndex = 0; 
 unsigned char printOnce = 1;
 
-unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
+volatile unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
+uint8_t ulCC3000DHCPIP[4];
 
 unsigned char ucStopSmartConfig;
-long ulSocket;
 
 typedef struct
 {
@@ -182,7 +183,6 @@ SpiClose(void)
 void SpiInit(){
   ulCC3000DHCP = 0;
   ulCC3000Connected = 0;
-  ulSocket = 0;
   ulSmartConfigFinished=0;
 
   pinMode(CC3000_nIRQ, INPUT);
@@ -929,16 +929,15 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
     // only if status is OK, the flag is set to 1 and the addresses are valid
     if ( *(data + NETAPP_IPCONFIG_MAC_OFFSET) == 0)
     {
-      Serial.println("set dhcp");
-      // Serial.print("Ip: ");
-      // Serial.println(data[3], HEX);
-      // Serial.println(data[2], HEX);
-      // Serial.println(data[1], HEX);
-      // Serial.println(data[0], HEX);
-
       //sprintf( (char*)pucCC3000_Rx_Buffer,"IP:%d.%d.%d.%d\f\r", data[3],data[2], data[1], data[0] );
 
       ulCC3000DHCP = 1;
+      ulCC3000DHCPIP[0] = data[3];
+      ulCC3000DHCPIP[1] = data[2];
+      ulCC3000DHCPIP[2] = data[1];
+      ulCC3000DHCPIP[3] = data[0];
+
+      _DEBUG("DHCP Connected with IP: %d.%d.%d.%d\n", ulCC3000DHCPIP[0], ulCC3000DHCPIP[1], ulCC3000DHCPIP[2], ulCC3000DHCPIP[3]);
 
       // turnLedOn(7);
     }

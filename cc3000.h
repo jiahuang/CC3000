@@ -18,16 +18,21 @@ extern "C" {
 //
 //*****************************************************************************
 extern unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
-extern long ulSocket;
+extern uint8_t ulCC3000DHCPIP[4];
 
-extern int test(void);
+extern void initializeCC3000(void);
 
-extern void initialize(void);
-extern void sendUDP(void);
-extern void connectUDP(void);
-extern void closeUDP(void);
-extern void listenUDP(void);
-extern const char *receiveUDP(void);
+extern long openUDP (void);
+extern long closeUDP (long socket);
+extern void sendUDP (long ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len);
+extern void listenUDP (long socket);
+extern const char *receiveUDP (long);
+
+extern long openTCP ();
+extern long closeTCP (long ulSocket);
+extern int requestTCP (long ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len);
+extern int listenTCP (long ulSocket, int port);
+extern void receiveTCP (long ulSocket);
 
 
 //*****************************************************************************
