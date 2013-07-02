@@ -1012,11 +1012,11 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 		// only if status is OK, the flag is set to 1 and the addresses are valid
 		if ( *(data + NETAPP_IPCONFIG_MAC_OFFSET) == 0)
 		{
-			// Serial.print("Ip: ");
-			// Serial.println(data[3], DEC);
-			// Serial.println(data[2], DEC);
-			// Serial.println(data[1], DEC);
-			// Serial.println(data[0], DEC);
+			Serial.print("Ip: ");
+			Serial.println(data[3], DEC);
+			Serial.println(data[2], DEC);
+			Serial.println(data[1], DEC);
+			Serial.println(data[0], DEC);
 
 			//sprintf( (char*)pucCC3000_Rx_Buffer,"IP:%d.%d.%d.%d\f\r", data[3],data[2], data[1], data[0] );
 
