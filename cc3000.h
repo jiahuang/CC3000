@@ -1,12 +1,4 @@
 
-
-//#include <string.h>
-//#include <stdlib.h>
-//#include <stdio.h>
-//#include "utility/wlan.h"
-
-
-
 //*****************************************************************************
 //
 // If building with a C++ compiler, make all of the definitions in this header
@@ -73,6 +65,11 @@ extern void print_spi_state(void);
 extern void StartSmartConfig(void);
 extern void initialize(void);
 extern void sendUDP(void);
+extern void connectUDP(void);
+extern void closeUDP(void);
+extern void listenUDP(void);
+extern const char *receiveUDP(void);
+
 extern unsigned char ascii_to_char(char b1, char b2);
 extern unsigned char atoc(char data);
 extern void SpiTriggerRxProcessing(void);

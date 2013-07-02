@@ -50,7 +50,8 @@
 #define NETAPP_IPCONFIG_MAC_OFFSET				(20)
 #define DEBUG_LED (4)
 
-
+#define CC3000_APP_BUFFER_SIZE                      (256)
+#define CC3000_RX_BUFFER_OVERHEAD_SIZE          (20)
 
 unsigned char tSpiReadHeader[] = {READ, 0, 0, 0, 0};
 int uart_have_cmd;
@@ -89,6 +90,8 @@ typedef struct
 
 
 tSpiInformation sSpiInformation;
+
+unsigned char pucCC3000_Rx_Buffer[CC3000_APP_BUFFER_SIZE + CC3000_RX_BUFFER_OVERHEAD_SIZE] = { 0 };
 
 void SpiWriteDataSynchronous(unsigned char *data, unsigned short size);
 void SpiWriteAsync(const unsigned char *data, unsigned short size);
@@ -535,9 +538,64 @@ void SpiTriggerRxProcessing(void)
 
 // }
 
-// void recvUDP(){
+void connectUDP () {
+	while ((ulCC3000DHCP == 0) || (ulCC3000Connected == 0))
+	{
+	}
 
-// }
+	// open a socket
+	ulSocket= socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+}
+
+void closeUDP() {
+	closesocket(ulSocket);
+	ulSocket = 0xFFFFFFFF;
+}
+
+void listenUDP () {
+	sockaddr localSocketAddr;
+	localSocketAddr.sa_family = AF_INET;
+	localSocketAddr.sa_data[0] = (4444 & 0xFF00) >> 8;
+	localSocketAddr.sa_data[1] = (4444 & 0x00FF); 
+	localSocketAddr.sa_data[2] = 0;
+	localSocketAddr.sa_data[3] = 0;
+	localSocketAddr.sa_data[4] = 0;
+	localSocketAddr.sa_data[5] = 0;
+
+	// Bind socket
+	int sockStatus;
+	if ( (sockStatus = bind(ulSocket, &localSocketAddr, sizeof(sockaddr)) ) != 0) {
+		Serial.print("binding failed: ");
+		Serial.println(sockStatus, BIN);
+		return;
+	}
+}
+
+const char *receiveUDP () {
+	// the family is always AF_INET
+	sockaddr remoteSocketAddr;
+	remoteSocketAddr.sa_family = AF_INET;
+	remoteSocketAddr.sa_data[0] = (4444 & 0xFF00) >> 8; 
+	remoteSocketAddr.sa_data[1] = (4444 & 0x00FF);
+	remoteSocketAddr.sa_data[2] = 10;
+	remoteSocketAddr.sa_data[3] = 1;
+	remoteSocketAddr.sa_data[4] = 90;
+	remoteSocketAddr.sa_data[5] = 135;
+
+	socklen_t tRxPacketLength = 8;
+	signed long iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE, 0, &remoteSocketAddr, &tRxPacketLength);
+	if (iReturnValue <= 0)
+	{
+		Serial.println("No data recieved");
+	}
+	else
+	{
+		Serial.print("Recieved with flag: ");
+		Serial.println(iReturnValue, BIN);
+	}
+
+	return (const char *) pucCC3000_Rx_Buffer;
+}
 
 void sendUDP(){
 	sockaddr tSocketAddr;
@@ -546,44 +604,19 @@ void sendUDP(){
 		delayMicroseconds(100);
 	}
 
-	// open a socket
-	ulSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	tSocketAddr.sa_family = AF_INET;
 
-	//toggleLed(2);
-	// data pointer
-	//pcData = (char *)&usBuffer[4];
-	
-	// data length to send
-	//ulDataLength = atoshort(usBuffer[2], usBuffer[3]);
-	
-	//pcSockAddrAscii = (pcData + ulDataLength);
-		
-	// the family is always AF_INET
-	//tSocketAddr.sa_family = atoshort(pcSockAddrAscii[0], pcSockAddrAscii[1]);
-	tSocketAddr.sa_family = AF_INET;//atoshort(0, 2);
-
-	// the destination port
-	//tSocketAddr.sa_data[0] = ascii_to_char(pcSockAddrAscii[2], pcSockAddrAscii[3]);
-	//tSocketAddr.sa_data[1] = ascii_to_char(pcSockAddrAscii[4], pcSockAddrAscii[5]);
-	tSocketAddr.sa_data[0] = 0x11;//ascii_to_char(0x01, 0x01);
-	tSocketAddr.sa_data[1] = 0x5c;//ascii_to_char(0x05, 0x0c);
+	// port 4444
+	tSocketAddr.sa_data[0] = 0x11;
+	tSocketAddr.sa_data[1] = 0x5c;
 
 	// the destination IP address
-//		tSocketAddr.sa_data[2] = ascii_to_char(pcSockAddrAscii[6], pcSockAddrAscii[7]);
-//		tSocketAddr.sa_data[3] = ascii_to_char(pcSockAddrAscii[8], pcSockAddrAscii[9]);
-//		tSocketAddr.sa_data[4] = ascii_to_char(pcSockAddrAscii[10], pcSockAddrAscii[11]);
-//		tSocketAddr.sa_data[5] = ascii_to_char(pcSockAddrAscii[12], pcSockAddrAscii[13]);
-	tSocketAddr.sa_data[2] = 10;//ascii_to_char(0x00, 0x0a);
-	tSocketAddr.sa_data[3] = 1;//ascii_to_char(0x00, 0x01);
-	tSocketAddr.sa_data[4] = 90;//ascii_to_char(0x05, 0x0a);
-	tSocketAddr.sa_data[5] = 135;//ascii_to_char(0x08, 0x07);
+	tSocketAddr.sa_data[2] = 10;
+	tSocketAddr.sa_data[3] = 1;
+	tSocketAddr.sa_data[4] = 90;
+	tSocketAddr.sa_data[5] = 135;
 	
-	// Serial.println("sending to socket");
 	sendto(ulSocket, "haha", 4, 0, &tSocketAddr, sizeof(sockaddr));
-
-	// close a socket
-	// closesocket(ulSocket);
-	// ulSocket = 0xFFFFFFFF;
 }
 
 void initialize(void){
