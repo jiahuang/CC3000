@@ -1,5 +1,4 @@
-/*****************************************************************************
-*
+/*
 *  hci.c  - CC3000 Host Driver Implementation.
 *  Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
 *
@@ -41,6 +40,7 @@
 //*****************************************************************************
 
 #include "cc3000_common.h"
+#include <string.h>
 #include "hci.h"
 #include "cc3000_spi.h"
 #include "evnt_handler.h"

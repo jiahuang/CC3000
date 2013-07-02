@@ -1,3 +1,12 @@
+#include "SPI.h"
+#include <Arduino.h>
+#include "wlan.h"
+#include "nvmem.h"
+#include "security.h"
+#include "hci.h"
+#include "os.h"
+#include "netapp.h"
+#include "evnt_handler.h"
 #include "cc3000_spi.h"
 
 #define READ                    3
@@ -48,8 +57,7 @@ int uart_have_cmd;
 //foor spi bus loop
 int loc = 0; 
 
-char ssid[] = "HCPGuest";                     // your network SSID (name) 
-unsigned char keys[] = "kendall!";       // your network key
+
 // c4:10:8a:57:8e:68
 // 84:1b:5e:45:8c:f1
 unsigned char bssid[] = {0x84, 0x1b, 0x5e, 0x45, 0x8c, 0xf1};       // your network key

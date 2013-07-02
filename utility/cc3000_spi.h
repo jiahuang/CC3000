@@ -1,14 +1,3 @@
-#include <Arduino.h>
-#include "wlan.h"
-#include "nvmem.h"
-#include "security.h"
-#include "hci.h"
-#include "os.h"
-#include "netapp.h"
-#include "evnt_handler.h"
-
-
-
 //*****************************************************************************
 //
 // If building with a C++ compiler, make all of the definitions in this header
