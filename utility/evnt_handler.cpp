@@ -42,6 +42,7 @@
 //******************************************************************************
 //                  INCLUDE FILES
 //******************************************************************************
+#include <Arduino.h>
 
 #include "cc3000_common.h"
 #include "string.h"
@@ -50,10 +51,11 @@
 #include "wlan.h"
 #include "socket.h"
 #include "netapp.h"
-#include "../cc3000.h"
-
+#include "cc3000_spi.h"
  
 
+#define DEBUG_LED (4)
+#define DEBUG_MODE		(1)
 //*****************************************************************************
 //                  COMMON DEFINES
 //*****************************************************************************
@@ -235,25 +237,33 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
   unsigned char * RecvParams;
   unsigned char *RetParams;
 	
-	
+	// int STATE = 0;
 	while (1)
 	{
+
 		if (tSLInformation.usEventOrDataReceived != 0)
-		{				
+		{	
+
 			pucReceivedData = (tSLInformation.pucReceivedData);
+			
 
 			if (*pucReceivedData == HCI_TYPE_EVNT)
 			{
+
+				// if (DEBUG_MODE){
+				// 			digitalWrite(DEBUG_LED, HIGH);
+				// 		}
 				// Event Received
 				STREAM_TO_UINT16((char *)pucReceivedData, HCI_EVENT_OPCODE_OFFSET,
 												 usReceivedEventOpcode);
 				pucReceivedParams = pucReceivedData + HCI_EVENT_HEADER_SIZE;		
 				RecvParams = pucReceivedParams;
-				RetParams = pRetParams;
+				RetParams = (unsigned char *)pRetParams;
 				
 				// In case unsolicited event received - here the handling finished
 				if (hci_unsol_event_handler((char *)pucReceivedData) == 0)
 				{
+
 					STREAM_TO_UINT8(pucReceivedData, HCI_DATA_LENGTH_OFFSET, usLength);
 					
 					switch(usReceivedEventOpcode)
@@ -400,6 +410,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 						break;
 						
 					case HCI_CMND_SIMPLE_LINK_START:
+
 						break;
 						
 					case HCI_NETAPP_IPCONFIG:

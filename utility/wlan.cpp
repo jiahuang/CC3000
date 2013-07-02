@@ -39,16 +39,19 @@
 //! @{
 //
 //*****************************************************************************
+#include <Arduino.h>
+
 #include <string.h>
 #include "wlan.h"
 #include "hci.h"
-#include "../cc3000.h"
+#include "cc3000_spi.h"
 #include "socket.h"
 #include "nvmem.h"
 #include "security.h"
 #include "evnt_handler.h"
 
-
+#define DEBUG_MODE		(1)
+#define DEBUG_LED (4)
 volatile sSimplLinkInformation tSLInformation;
 
 #define SMART_CONFIG_PROFILE_SIZE		67		// 67 = 32 (max ssid) + 32 (max key) + 1 (SSID length) + 1 (security type) + 1 (key length)
@@ -125,6 +128,7 @@ static void SimpleLink_Init_Start(unsigned short usPatchesAvailableAtHost)
 	hci_command_send(HCI_CMND_SIMPLE_LINK_START, ptr, WLAN_SL_INIT_START_PARAMS_LEN);
 	
 	SimpleLinkWaitEvent(HCI_CMND_SIMPLE_LINK_START, 0);
+
 }
 
 
@@ -218,6 +222,9 @@ void wlan_init(		tWlanCB	 	sWlanCB,
 //*****************************************************************************
 void SpiReceiveHandler(void *pvBuffer)
 {	
+	// if (DEBUG_MODE) {
+	// 			digitalWrite(DEBUG_LED, HIGH);
+	// 		}
 	tSLInformation.usEventOrDataReceived = 1;
 	tSLInformation.pucReceivedData = (unsigned char 	*)pvBuffer;
 	
@@ -278,6 +285,8 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 	// Check the IRQ line
 	ulSpiIRQState = tSLInformation.ReadWlanInterruptPin();
 	
+	//Serial.print("IRQ state is: ");
+	//Serial.println(ulSpiIRQState);
 	// ASIC 1273 chip enable: toggle WLAN EN line
 	tSLInformation.WriteWlanPin( WLAN_ENABLE );
 	
@@ -304,6 +313,7 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 	
 	// Read Buffer's size and finish
 	hci_command_send(HCI_CMND_READ_BUFFER_SIZE, tSLInformation.pucTxCommandBuffer, 0);
+
 	SimpleLinkWaitEvent(HCI_CMND_READ_BUFFER_SIZE, 0);
 }
 
