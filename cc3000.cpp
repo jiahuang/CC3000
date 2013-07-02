@@ -219,11 +219,6 @@ void SpiInit(){
 void SpiOpen(gcSpiHandleRx pfRxHandler)
 {
 
-	if (DEBUG_MODE)
-	{
-		Serial.println("SpiOpen");
-	}
-
 	sSpiInformation.ulSpiState = eSPI_STATE_POWERUP;
 
 	sSpiInformation.SPIRxHandler = pfRxHandler;
@@ -239,12 +234,6 @@ void SpiOpen(gcSpiHandleRx pfRxHandler)
 //	Enable interrupt on the GPIOA pin of WLAN IRQ
 	
 	tSLInformation.WlanInterruptEnable();
-
-
-	if (DEBUG_MODE)
-	{
-		Serial.println("Completed SpiOpen");
-	}
 }
 
 
@@ -282,31 +271,18 @@ long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 
 	delayMicroseconds(80);
 
-	// unsigned char testData[6];
-	// testData[0] = (unsigned char)0x00;
-	// testData[1] = (unsigned char)0x01;
-	// testData[2] = (unsigned char)0x00;
-	// testData[3] = (unsigned char)0x40;
-	// testData[4] = (unsigned char)0x0E;
-	// testData[5] = (unsigned char)0x04;
-
 	SpiWriteDataSynchronous(ucBuf + 4, usLength - 4);
 	// SpiWriteDataSynchronous(testData, usLength - 4);
 
 	// From this point on - operate in a regular way
 	sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
 
-	// digitalWrite(HOST_nCS, HIGH);
 	csn(HIGH);
 	return(0);
 }
 
 long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 {
-	// if (DEBUG_MODE)
-	// {
-	// 	Serial.println("SpiWrite");
-	// }
 
 	unsigned char ucPad = 0;
 
@@ -404,32 +380,14 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 void SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 {
 	tSLInformation.WlanInterruptDisable();
-	// if (DEBUG_MODE)
-	// {
-	// 	Serial.println("SpiWriteDataSynchronous");
-	// 	for(int i = 0; i<size; i++) {
-	// 		Serial.println(data[i], DEC);
-	// 	}
-	// 	Serial.println();
-	// }
-	
-	// csn(LOW);
+
 	while (size) {
 		SPI.transfer(*data);
 		size--;
 		data++;
-		// if (DEBUG_MODE)
-		// {
-		// 	Serial.println(result);
-		// }
+
 	}
-	// csn(HIGH);
-	
-	// if (DEBUG_MODE)
-	// {
-	// 	Serial.println("SpiWriteDataSynchronous done.");
-	// 	delayMicroseconds(50);
-	// }
+
 	tSLInformation.WlanInterruptEnable();
 	
 }
@@ -437,38 +395,14 @@ void SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 
 void SpiReadDataSynchronous(unsigned char *data, unsigned short size)
 {
-
-	unsigned int i = 0;
-	// csn(LOW);
-	for (i = 0; i < size; i ++)
+	for (int i = 0; i < size; i ++)
 	{
 		data[i] = SPI.transfer(tSpiReadHeader[0]); 
-		// if (DEBUG_MODE) {
-		// 	Serial.println(data[i], DEC);
-		// }
 	}
-	// csn(HIGH);
-	// if (DEBUG_MODE) {
-	// 	Serial.println("spi read");
-	// 	// Serial.println(size);
-		
-	// 	// for (i = 0; i<size; i++){
-	// 	// 	Serial.println(data[i]);
-	// 	// }
-	// }
-
 }
 
 void SpiReadHeader(void)
 {
-
-	// if (DEBUG_MODE)
-	// {
-	// 	Serial.println("SpiReadHeader");
-	// }
-
-	//SpiWriteDataSynchronous(tSpiReadHeader, 3);
-
 	SpiReadDataSynchronous(sSpiInformation.pRxPacket, 10);
 }
 
@@ -550,7 +484,7 @@ void SpiPauseSpi(void)
 	// 	Serial.println("SpiPauseSpi");
 	// }
 
-	detachInterrupt(0);	//Detaches Pin 3 from interrupt 1
+	detachInterrupt(0);
 }
 
 void SpiResumeSpi(void)
@@ -604,66 +538,6 @@ void SpiTriggerRxProcessing(void)
 // void recvUDP(){
 
 // }
-
-//*****************************************************************************
-//
-//! atoc
-//!
-//! @param  none
-//!
-//! @return none
-//!
-//! @brief  Convert nibble to hexdecimal from ASCII
-//
-//*****************************************************************************
-unsigned char atoc(char data)
-{
-	unsigned char ucRes;
-
-	if ((data >= 0x30) && (data <= 0x39))
-	{
-		ucRes = data - 0x30;
-	}
-	else
-	{
-		if (data == 'a')
-		{
-			ucRes = 0x0a;;
-		}
-		else if (data == 'b')
-		{
-			ucRes = 0x0b;
-		}
-		else if (data == 'c')
-		{
-			ucRes = 0x0c;
-		}
-		else if (data == 'd')
-		{
-			ucRes = 0x0d;
-		}
-		else if (data == 'e')
-		{
-			ucRes = 0x0e;
-		}
-		else if (data == 'f')
-		{
-			ucRes = 0x0f;
-		}
-	}
-	return ucRes;
-}
-
-
-unsigned char ascii_to_char(char b1, char b2)
-{
-	unsigned char ucRes;
-
-	ucRes = (atoc(b1)) << 4 | (atoc(b2));
-
-	return ucRes;
-}
-
 
 void sendUDP(){
 	sockaddr tSocketAddr;
@@ -733,15 +607,15 @@ void initialize(void){
 	int connected = -1;
 	connected = wlan_connect(WLAN_SEC_WPA2,ssid,8, 0, keys, 8);
 	Serial.println(connected);
-	// unsigned char version[2];
-	// if (!nvmem_read_sp_version(version))
-	// {
-	// 	Serial.println(version[0]);
-	// 	Serial.println(version[1]);
+	unsigned char version[2];
+	if (!nvmem_read_sp_version(version))
+	{
+		Serial.println(version[0]);
+		Serial.println(version[1]);
 
-	// } else {
-	// 	Serial.println("Failed to read version");
-	// }
+	} else {
+		Serial.println("Failed to read version");
+	}
 }
 
 int test(void)
@@ -1087,7 +961,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 		ulCC3000DHCP      = 0;
 		ulCC3000DHCP_configured = 0;
 		printOnce = 1;
-		
+		Serial.println("disconnected");
 		// Turn off the LED7
 		//turnLedOff(7);
 		
@@ -1114,6 +988,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 			//sprintf( (char*)pucCC3000_Rx_Buffer,"IP:%d.%d.%d.%d\f\r", data[3],data[2], data[1], data[0] );
 
 			ulCC3000DHCP = 1;
+			Serial.println("DHCP success");
 
 			//turnLedOn(8);
 		}
