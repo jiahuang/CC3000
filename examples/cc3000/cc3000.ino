@@ -5,9 +5,12 @@
 //#include <cc3000old.h>
 #include <cc3000.h>
 
+#define SmartConfig 6
+int SmartConfigProcess = 0;
 void setup() {
 //  pinMode(13, OUTPUT);
 //  digitalWrite(13, LOW);
+  pinMode(SmartConfig, INPUT);
   Serial.begin(9600);
   Serial.println("setting up"); 
   
@@ -35,5 +38,10 @@ void loop() {
         Serial.print(*ret++);
       }
     }
+  }
+
+  if (digitalRead(SmartConfig) == 0 && SmartConfigProcess == 0) {
+    SmartConfigProcess = 1;
+    StartSmartConfig();
   }
 }

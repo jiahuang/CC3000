@@ -108,14 +108,6 @@ void sendUDP(){
 	sendto(ulSocket, "haha", 4, 0, &tSocketAddr, sizeof(sockaddr));
 }
 
-void getIpAddr(char * ipBuffer){
-  tNetappIpconfigRetArgs ipinfo;
-  netapp_ipconfig(&ipinfo);
-  // iptostring(ipinfo.aucIP, ipBuffer);
-  // DispatcherUartSendPacket("Ip = ", 5);
-  // DispatcherUartSendPacket((unsigned char*) ipvalue, length);
-}
-
 void printMAC(void){
   unsigned char cMacFromEeprom[MAC_ADDR_LEN];
 
@@ -131,7 +123,24 @@ void printMAC(void){
   }
 }
 
+void printVersion(void){
+	unsigned char version[2];
+	if (!nvmem_read_sp_version(version))
+	{
+		Serial.print("Version: ");
+		Serial.print(version[0]);
+		Serial.print(".");
+		Serial.println(version[1]);
+
+	} else {
+		Serial.println("Failed to read version");
+	}
+}
+
 void initialize(void){
+	pinMode(ConnLED, OUTPUT);
+	pinMode(ErrorLED, OUTPUT);
+
   Serial.println("Calling wlan_init");
   wlan_init(CC3000_UsynchCallback, NULL, NULL, NULL, ReadWlanInterruptPin, 
     WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
@@ -139,28 +148,117 @@ void initialize(void){
   Serial.println("Calling wlan_start...");
   wlan_start(0);
 
-  printMAC();
+  // printMAC();
+  // printVersion();
   
   Serial.println("setting event mask");
   wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
-	Serial.println("config wlan");
-	wlan_ioctl_set_connection_policy(0, 0, 0);
+	// Serial.println("config wlan");
+	// wlan_ioctl_set_connection_policy(ENABLE, ENABLE, ENABLE);
 
-	Serial.println("Attempting to connect...");
-	int connected = -1;
-	connected = wlan_connect(WLAN_SEC_WPA2,ssid,8, 0, keys, 8);
-	Serial.println(connected);
-	unsigned char version[2];
-	if (!nvmem_read_sp_version(version))
-	{
-		Serial.println(version[0]);
-		Serial.println(version[1]);
-
-	} else {
-		Serial.println("Failed to read version");
-	}
+	// Serial.println("Attempting to connect...");
+	// int connected = -1;
+	// connected = wlan_connect(WLAN_SEC_WPA2,ssid,8, 0, keys, 8);
+	// Serial.println(connected);
 }
+
+void StartSmartConfig(void)
+{
+  if (DEBUG_MODE) {
+    Serial.println("Start Smart Config");
+  }
+  ulSmartConfigFinished = 0;
+  ulCC3000Connected = 0;
+  ulCC3000DHCP = 0;
+  OkToDoShutDown=0;
+
+  // Reset all the previous configuration
+  if (wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE) != 0) {
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+  
+  if (wlan_ioctl_del_profile(255) != 0) {
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+
+  //Wait until CC3000 is disconnected
+  while (ulCC3000Connected == 1)
+  {
+    delayMicroseconds(100);
+  }
+
+  // Trigger the Smart Config process
+  // Start blinking LED6 during Smart Configuration process
+  digitalWrite(ConnLED, HIGH);  
+  if (wlan_smart_config_set_prefix((char*)aucCC3000_prefix) != 0){
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+  digitalWrite(ConnLED, LOW);      
+
+  // Start the SmartConfig start process
+  if (wlan_smart_config_start(1) != 0){
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+
+  digitalWrite(ConnLED, HIGH);
+
+  // Wait for Smartconfig process complete
+  while (ulSmartConfigFinished == 0)
+  {
+    delayMicroseconds(100);
+    digitalWrite(ConnLED, LOW);
+    delayMicroseconds(100);
+    digitalWrite(ConnLED, HIGH);
+  }
+
+  digitalWrite(ConnLED, LOW);
+
+
+  // #ifndef CC3000_UNENCRYPTED_SMART_CONFIG
+  // create new entry for AES encryption key
+  if (nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16) != 0){
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+
+  // write AES key to NVMEM
+  if (aes_write_key((unsigned char *)(&smartconfigkey[0])) != 0){
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+
+  // Decrypt configuration information and add profile
+  if (wlan_smart_config_process() != 0) {
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+  // #endif    
+
+  // Configure to connect automatically to the AP retrieved in the 
+  // Smart config process. Enabled fast connect.
+  if (wlan_ioctl_set_connection_policy(DISABLE, ENABLE, ENABLE) != 0){
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+
+  // reset the CC3000
+  wlan_stop();
+
+  delayMicroseconds(100);
+  wlan_start(0);
+
+  // Mask out all non-required events
+  wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+  if (DEBUG_MODE) {
+    Serial.print("Config done");
+  }
+}
+
 
 int test(void)
 {

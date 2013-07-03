@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+#define DEBUG_MODE    (1)
+
 typedef void (*gcSpiHandleRx)(void *p);
 typedef void (*gcSpiHandleTx)(void);
 

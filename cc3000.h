@@ -12,6 +12,9 @@
 extern "C" {
 #endif
 
+#define ConnLED 7
+#define ErrorLED 6
+
 //*****************************************************************************
 //
 // Prototypes for the APIs.
