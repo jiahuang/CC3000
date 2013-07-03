@@ -31,6 +31,7 @@ extern void connectUDP(void);
 extern void closeUDP(void);
 extern void listenUDP(void);
 extern const char *receiveUDP(void);
+extern void StartSmartConfig(void);
 
 
 //*****************************************************************************

@@ -14,11 +14,15 @@
 
 #define CC3000_APP_BUFFER_SIZE                      (256)
 #define CC3000_RX_BUFFER_OVERHEAD_SIZE          (20)
-
+#define DISABLE 0
+#define ENABLE 1
 
 char ssid[] = "HCPGuest";                     // your network SSID (name) 
 unsigned char keys[] = "kendall!";       // your network key
 int connected = -1;
+const char aucCC3000_prefix[] = {'T', 'T', 'T'};
+//AES key "smartconfigAES16"
+const unsigned char smartconfigkey[] = {0x73,0x6d,0x61,0x72,0x74,0x63,0x6f,0x6e,0x66,0x69,0x67,0x41,0x45,0x53,0x31,0x36};
 
 // unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
 unsigned char pucCC3000_Rx_Buffer[CC3000_APP_BUFFER_SIZE + CC3000_RX_BUFFER_OVERHEAD_SIZE] = { 0 };
