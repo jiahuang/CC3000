@@ -12,6 +12,8 @@
 #include "utility/debug.h"
 #include "cc3000.h"
 
+
+
 /**
  * Configuration
  */
@@ -25,13 +27,353 @@ int connected = -1;
 
 unsigned char pucCC3000_Rx_Buffer[CC3000_APP_BUFFER_SIZE + CC3000_RX_BUFFER_OVERHEAD_SIZE] = { 0 };
 
-void wait_dhcp ()
+void cc_block_until_dhcp ()
 {
   while ((ulCC3000DHCP == 0) || (ulCC3000Connected == 0)) {
-    continue;
+    delayMicroseconds(100);
   }
 }
 
+
+/** 
+ * UDP
+ */
+
+int cc_udp_open_socket ()
+{
+	return socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+}
+
+int cc_udp_close_socket (int ulSocket)
+{
+	closesocket(ulSocket);
+	return 0xFFFFFFFF;
+}
+
+int cc_udp_listen (int ulSocket, int port)
+{
+	sockaddr localSocketAddr;
+	localSocketAddr.sa_family = AF_INET;
+	localSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
+	localSocketAddr.sa_data[1] = (port & 0x00FF); 
+	localSocketAddr.sa_data[2] = 0;
+	localSocketAddr.sa_data[3] = 0;
+	localSocketAddr.sa_data[4] = 0;
+	localSocketAddr.sa_data[5] = 0;
+
+	// Bind socket
+	int sockStatus;
+	if ( (sockStatus = bind(ulSocket, &localSocketAddr, sizeof(sockaddr)) ) != 0) {
+		CC_DEBUG("Binding UDP socket failed: %d\n", sockStatus);
+	}
+  return sockStatus;
+}
+
+const char *receiveUDP (int ulSocket)
+{
+	// the family is always AF_INET
+	sockaddr remoteSocketAddr;
+	remoteSocketAddr.sa_family = AF_INET;
+	remoteSocketAddr.sa_data[0] = (4444 & 0xFF00) >> 8; 
+	remoteSocketAddr.sa_data[1] = (4444 & 0x00FF);
+	remoteSocketAddr.sa_data[2] = 10;
+	remoteSocketAddr.sa_data[3] = 1;
+	remoteSocketAddr.sa_data[4] = 90;
+	remoteSocketAddr.sa_data[5] = 135;
+
+	socklen_t tRxPacketLength = 8;
+	signed long iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE, 0, &remoteSocketAddr, &tRxPacketLength);
+	if (iReturnValue <= 0)
+	{
+		CC_DEBUG("No data recieved\n");
+	}
+	else
+	{
+		Serial.print("Recieved with flag: ");
+		Serial.println(iReturnValue, BIN);
+	}
+
+	return (const char *) pucCC3000_Rx_Buffer;
+}
+
+void cc_udp_send (int ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len)
+{
+	sockaddr tSocketAddr;
+
+	tSocketAddr.sa_family = AF_INET;
+	tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8; 
+	tSocketAddr.sa_data[1] = (port & 0x00FF);
+	tSocketAddr.sa_data[2] = ip0;
+	tSocketAddr.sa_data[3] = ip1;
+	tSocketAddr.sa_data[4] = ip2;
+	tSocketAddr.sa_data[5] = ip3;
+	
+	sendto(ulSocket, buf, buf_len, 0, &tSocketAddr, sizeof(sockaddr));
+}
+
+
+/**
+ * TCP
+ */
+
+int cc_tcp_open_socket ()
+{
+  int ulSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  setsockopt(ulSocket, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, SOCK_ON, 4);
+  return ulSocket;
+}
+
+int cc_tcp_close_socket (int ulSocket)
+{
+  closesocket(ulSocket);
+  return 0xFFFFFFFF;
+}
+
+int cc_tcp_connect (int ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port)
+{
+  // the family is always AF_INET
+  sockaddr remoteSocketAddr;
+  remoteSocketAddr.sa_family = AF_INET;
+  remoteSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
+  remoteSocketAddr.sa_data[1] = (port & 0x00FF);
+  remoteSocketAddr.sa_data[2] = ip0;
+  remoteSocketAddr.sa_data[3] = ip1;
+  remoteSocketAddr.sa_data[4] = ip2;
+  remoteSocketAddr.sa_data[5] = ip3;
+
+  int lerr = connect(ulSocket, &remoteSocketAddr, sizeof(sockaddr));
+  if (lerr != ESUCCESS) {
+    CC_DEBUG("Error Connecting\r\n");
+  }
+  return lerr;
+}
+
+int cc_tcp_write (int ulSocket, uint8_t *buf, unsigned long buf_len)
+{
+  int sentLen = send(ulSocket, buf, buf_len, 0);
+  CC_DEBUG("Wrote %d bytes to TCP socket.\n", sentLen);
+  return sentLen;
+}
+
+int cc_tcp_is_readable (int ulSocket) 
+{
+  fd_set readSet;        // Socket file descriptors we want to wake up for, using select()
+  FD_ZERO(&readSet);
+  FD_SET(ulSocket, &readSet); 
+  struct timeval timeout;
+
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 0;
+
+  int rcount = select( ulSocket+1, &readSet, (fd_set *) 0, (fd_set *) 0, &timeout );
+  int flag = FD_ISSET(ulSocket, &readSet);
+  return flag;
+}
+
+int cc_tcp_block_until_readable (int ulSocket, int timeout) {
+  while (true) {
+    if (cc_tcp_is_readable(ulSocket)) {
+      break;
+    }
+    if (timeout > 0 && --timeout == 0) {
+      return -1;
+    }
+    delay(100);
+  }
+  return 0;
+}
+
+int cc_tcp_read (int ulSocket, uint8_t *buf, int buf_len)
+{
+  return recv(ulSocket, buf, buf_len, 0);
+}
+
+int cc_tcp_read_byte (int ulSocket)
+{
+  uint8_t buf[1];
+  int status = cc_tcp_read(ulSocket, buf, 1);
+  if (status <= 0) {
+    return -1;
+  }
+  return buf[0];
+}
+
+int cc_tcp_listen (int ulSocket, int port)
+{
+  sockaddr localSocketAddr;
+  localSocketAddr.sa_family = AF_INET;
+  localSocketAddr.sa_data[0] = (port & 0xFF00) >> 8; //ascii_to_char(0x01, 0x01);
+  localSocketAddr.sa_data[1] = (port & 0x00FF); //ascii_to_char(0x05, 0x0c);
+  localSocketAddr.sa_data[2] = 0;
+  localSocketAddr.sa_data[3] = 0;
+  localSocketAddr.sa_data[4] = 0;
+  localSocketAddr.sa_data[5] = 0;
+
+  // Bind socket
+  CC_DEBUG("Binding local socket...\n");
+  int sockStatus;
+  if ((sockStatus = bind(ulSocket, &localSocketAddr, sizeof(sockaddr))) != 0) {
+    CC_DEBUG("binding failed: %d\n", sockStatus);
+    return -1;
+  }
+
+  CC_DEBUG("Listening on local socket...\n");
+  int listenStatus = listen(ulSocket, 1);
+  if (listenStatus != 0) {
+    CC_DEBUG("cannot listen to socket: %d\n", listenStatus);
+    return -1;
+  }
+
+  return 0;
+}
+
+int cc_tcp_accept (int ulSocket, sockaddr *addrClient, socklen_t *addrlen)
+{
+  return accept(ulSocket, addrClient, addrlen);
+}
+
+int cc_tcp_block_until_accepting (int ulSocket, sockaddr *addrClient, socklen_t *addrlen)
+{
+  int result = 0;
+  *addrlen = sizeof(sockaddr);
+  while ((result = cc_tcp_accept(ulSocket, addrClient, addrlen)) < 0) {
+    delayMicroseconds(100);
+  }
+  return result;
+}
+
+void cc_tcp_read_dump (int ulSocket)
+{
+  uint8_t buf[30];
+
+  // If no content is readable, stop blocking.
+  if (cc_tcp_block_until_readable(ulSocket, 10) < 0) {
+    return;
+  }
+
+  // Dump bytes.
+  int tcpc = 0;
+  while (cc_tcp_is_readable(ulSocket)) {
+    int count = cc_tcp_read(ulSocket, buf, 30);
+    tcpc += count;
+    for (int i = 0; i < count; i++) {
+      CC_DEBUG("%c", buf[i]);
+    }
+  }
+  CC_DEBUG("\n(Read %d bytes.)\n", tcpc);
+}
+
+
+/**
+ * Startup
+ */
+
+void getIpAddr (char * ipBuffer)
+{
+  tNetappIpconfigRetArgs ipinfo;
+  netapp_ipconfig(&ipinfo);
+  // iptostring(ipinfo.aucIP, ipBuffer);
+  // DispatcherUartSendPacket("Ip = ", 5);
+  // DispatcherUartSendPacket((unsigned char*) ipvalue, length);
+}
+
+void printMAC (void)
+{
+  unsigned char cMacFromEeprom[MAC_ADDR_LEN];
+
+  if (nvmem_get_mac_address(cMacFromEeprom)) {
+    CC_DEBUG("No mac address found\n");
+  } else {
+    CC_DEBUG("MAC: %d", cMacFromEeprom[0]);
+    for(int i = 1; i < MAC_ADDR_LEN; i++){
+      CC_DEBUG(".%d", cMacFromEeprom[i]);
+    }
+    CC_DEBUG("\n");
+  }
+}
+
+
+void cc_initialize_dhcp_server (void) 
+{
+  // Added by Hai Ta
+  //
+  // Network mask is assumed to be 255.255.255.0
+  //
+
+  uint8_t pucSubnetMask[4], pucIP_Addr[4], pucIP_DefaultGWAddr[4];
+
+  unsigned long pucDNS = 0x04040808;
+
+  pucSubnetMask[0] = 0;
+  pucSubnetMask[1] = 0;
+  pucSubnetMask[2] = 0;
+  pucSubnetMask[3] = 0;
+  pucIP_Addr[0] = 0;
+  pucIP_Addr[1] = 0;
+  pucIP_Addr[2] = 0;
+  pucIP_Addr[3] = 0;
+  // Use default gateway 192.168.1.1 here
+  pucIP_DefaultGWAddr[0] = 0;
+  pucIP_DefaultGWAddr[1] = 0;
+  pucIP_DefaultGWAddr[2] = 0;
+  pucIP_DefaultGWAddr[3] = 0;
+                       
+  // In order for gethostbyname( ) to work, it requires DNS server to be configured prior to its usage
+  // so I am gonna add full static 
+
+  // Netapp_Dhcp is used to configure the network interface, static or dynamic (DHCP).
+  // In order to activate DHCP mode, aucIP, aucSubnetMask, aucDefaultGateway must be 0.The default mode of CC3000 is DHCP mode. 
+  netapp_dhcp((unsigned long *)pucIP_Addr, (unsigned long *)pucSubnetMask, (unsigned long *)pucIP_DefaultGWAddr, &pucDNS);
+}
+
+
+void cc_initialize (void)
+{
+  SpiInit();
+  delayMicroseconds(100);
+
+  CC_DEBUG("Calling wlan_init\n");
+  wlan_init(CC3000_UsynchCallback, NULL, NULL, NULL, ReadWlanInterruptPin, 
+    WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
+
+  CC_DEBUG("Calling wlan_start...\n");
+  wlan_start(0);
+
+  // cc_initialize_dhcp_server();
+  // wlan_stop();
+  // delay(2000);
+  // wlan_start(0);
+
+  printMAC();
+  
+  CC_DEBUG("setting event mask\n");
+  wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+
+	CC_DEBUG("config wlan\n");
+	wlan_ioctl_set_connection_policy(0, 0, 0);
+
+	CC_DEBUG("Attempting to connect...\n");
+	int connected = -1;
+	connected = wlan_connect(WLAN_SEC_WPA2,ssid,8, 0, keys, 8);
+	CC_DEBUG("Connected: %d\n", connected);
+	
+  unsigned char version[2];
+	if (!nvmem_read_sp_version(version)) {
+		CC_DEBUG("Firmware version: %d.%d\n", version[0], version[1]);
+	} else {
+		CC_DEBUG("Failed to read version\n");
+	}
+}
+
+
+
+
+
+
+
+/**
+ * HTTP
+ */
 
 
 
@@ -123,7 +465,7 @@ int http_parse_header (int ulSocket, char (*http_receive_byte)(int), void (*on_h
 
       case http_header_status_value_character:
         if (keyn > 0) {
-          _DEBUG("keyn %d compare %d\n", keyn, strncmp(buf, "content-length", keyn));
+          CC_DEBUG("keyn %d compare %d\n", keyn, strncmp(buf, "content-length", keyn));
           buf[keyn] = '\0';
           if (keyn == 14 && 0 == strncmp(buf, "content-length", keyn)) {
             is_content_len_header = 1;
@@ -153,159 +495,7 @@ int http_parse_header (int ulSocket, char (*http_receive_byte)(int), void (*on_h
 
 
 
-/** 
- * UDP
- */
 
-int openUDP ()
-{
-	wait_dhcp();
-
-	// open a socket
-	return socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-}
-
-int closeUDP (int ulSocket)
-{
-	closesocket(ulSocket);
-	return 0xFFFFFFFF;
-}
-
-void listenUDP (int ulSocket)
-{
-	sockaddr localSocketAddr;
-	localSocketAddr.sa_family = AF_INET;
-	localSocketAddr.sa_data[0] = (4444 & 0xFF00) >> 8;
-	localSocketAddr.sa_data[1] = (4444 & 0x00FF); 
-	localSocketAddr.sa_data[2] = 0;
-	localSocketAddr.sa_data[3] = 0;
-	localSocketAddr.sa_data[4] = 0;
-	localSocketAddr.sa_data[5] = 0;
-
-	// Bind socket
-	int sockStatus;
-	if ( (sockStatus = bind(ulSocket, &localSocketAddr, sizeof(sockaddr)) ) != 0) {
-		Serial.print("binding failed: ");
-		Serial.println(sockStatus, BIN);
-		return;
-	}
-}
-
-const char *receiveUDP (int ulSocket)
-{
-	// the family is always AF_INET
-	sockaddr remoteSocketAddr;
-	remoteSocketAddr.sa_family = AF_INET;
-	remoteSocketAddr.sa_data[0] = (4444 & 0xFF00) >> 8; 
-	remoteSocketAddr.sa_data[1] = (4444 & 0x00FF);
-	remoteSocketAddr.sa_data[2] = 10;
-	remoteSocketAddr.sa_data[3] = 1;
-	remoteSocketAddr.sa_data[4] = 90;
-	remoteSocketAddr.sa_data[5] = 135;
-
-	socklen_t tRxPacketLength = 8;
-	signed long iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE, 0, &remoteSocketAddr, &tRxPacketLength);
-	if (iReturnValue <= 0)
-	{
-		_DEBUG("No data recieved\n");
-	}
-	else
-	{
-		Serial.print("Recieved with flag: ");
-		Serial.println(iReturnValue, BIN);
-	}
-
-	return (const char *) pucCC3000_Rx_Buffer;
-}
-
-void sendUDP (int ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len)
-{
-	sockaddr tSocketAddr;
-
-	wait_dhcp();
-
-	tSocketAddr.sa_family = AF_INET;
-	tSocketAddr.sa_data[0] = (port & 0xFF00) >> 8; 
-	tSocketAddr.sa_data[1] = (port & 0x00FF);
-	tSocketAddr.sa_data[2] = ip0;
-	tSocketAddr.sa_data[3] = ip1;
-	tSocketAddr.sa_data[4] = ip2;
-	tSocketAddr.sa_data[5] = ip3;
-	
-	sendto(ulSocket, buf, buf_len, 0, &tSocketAddr, sizeof(sockaddr));
-}
-
-
-/**
- * TCP
- */
-
-int openTCP ()
-{
-  wait_dhcp();
-  // open a socket
-  return socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-}
-
-int closeTCP (int ulSocket)
-{
-  closesocket(ulSocket);
-  return 0xFFFFFFFF;
-}
-
-int requestTCP (int ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len)
-{
-  // the family is always AF_INET
-  sockaddr remoteSocketAddr;
-  remoteSocketAddr.sa_family = AF_INET;
-  remoteSocketAddr.sa_data[0] = (port & 0xFF00) >> 8;
-  remoteSocketAddr.sa_data[1] = (port & 0x00FF);
-  remoteSocketAddr.sa_data[2] = ip0;
-  remoteSocketAddr.sa_data[3] = ip1;
-  remoteSocketAddr.sa_data[4] = ip2;
-  remoteSocketAddr.sa_data[5] = ip3;
-
-  int lerr = connect(ulSocket, &remoteSocketAddr, sizeof(sockaddr));
-
-  if (lerr != ESUCCESS)
-  {
-    _DEBUG("Error Connecting\r\n");
-    return -1;
-  }
-
-  int sentLen = send(ulSocket, buf, buf_len, 0);
-  _DEBUG("Sent length of TCP: %d\n", sentLen);
-  return sentLen;
-}
-
-int poll_readable_socket (int ulSocket) 
-{
-  fd_set readSet;        // Socket file descriptors we want to wake up for, using select()
-  FD_ZERO(&readSet);
-  FD_SET(ulSocket, &readSet); 
-  struct timeval timeout;
-
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 10000; // 10ms
-
-  int rcount = select( ulSocket+1, &readSet, (fd_set *) 0, (fd_set *) 0, &timeout );
-  int flag = FD_ISSET(ulSocket, &readSet);
-  return flag;
-}
-
-int block_readable_socket (int ulSocket) {
-  int timeout = 10;
-  while (true) {
-    if (poll_readable_socket(ulSocket)) {
-      break;
-    }
-    if (--timeout == 0) {
-      return -1;
-    }
-    delay(100);
-  }
-  return 0;
-}
 
 char http_receive_byte (int ulSocket)
 {
@@ -317,166 +507,33 @@ char http_receive_byte (int ulSocket)
 
 void on_http_header (char *buf, int len)
 {
-  _DEBUG("HEADER matched %s\n", buf);
+  CC_DEBUG("HEADER matched %s\n", buf);
 }
 
 void on_http_body (int status, int len)
 {
-  _DEBUG("BODY %d length %d\n", status, len);
+  CC_DEBUG("BODY %d length %d\n", status, len);
 }
 
-int crudeReadTCP (int ulSocket)
-{
-  if (block_readable_socket(ulSocket) < 0) {
-    return -1;
-  }
-  delay(100);
+// int crudeReadTCP (int ulSocket)
+// {
+//   if (cc_tcp_block_until_readable(ulSocket) < 0) {
+//     return -1;
+//   }
+//   delay(100);
 
-  http_parse_header(ulSocket, http_receive_byte, on_http_header, on_http_body);
+//   http_parse_header(ulSocket, http_receive_byte, on_http_header, on_http_body);
 
-  // int totalbytes = 0, bytesReceived = 0;
-  // while (block_readable_socket(ulSocket) == 0) {
-  //   bytesReceived = recv(ulSocket, pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE, 0);
-  //   if (bytesReceived <= 0) {
-  //     break;
-  //   }
-  //   totalbytes += bytesReceived;
-  //   pucCC3000_Rx_Buffer[bytesReceived] = '\0';
-  //   _DEBUG("Result of TCP %d bytes: \"%s\"\n", bytesReceived, pucCC3000_Rx_Buffer);
-  // } 
+//   // int totalbytes = 0, bytesReceived = 0;
+//   // while (block_readable_socket(ulSocket) == 0) {
+//   //   bytesReceived = recv(ulSocket, pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE, 0);
+//   //   if (bytesReceived <= 0) {
+//   //     break;
+//   //   }
+//   //   totalbytes += bytesReceived;
+//   //   pucCC3000_Rx_Buffer[bytesReceived] = '\0';
+//   //   CC_DEBUG("Result of TCP %d bytes: \"%s\"\n", bytesReceived, pucCC3000_Rx_Buffer);
+//   // } 
 
-  // return bytesReceived;
-}
-
-
-int listenTCP (int ulSocket, int port)
-{
-  sockaddr localSocketAddr;
-  localSocketAddr.sa_family = AF_INET;
-  localSocketAddr.sa_data[0] = (port & 0xFF00) >> 8; //ascii_to_char(0x01, 0x01);
-  localSocketAddr.sa_data[1] = (port & 0x00FF); //ascii_to_char(0x05, 0x0c);
-  localSocketAddr.sa_data[2] = 0;
-  localSocketAddr.sa_data[3] = 0;
-  localSocketAddr.sa_data[4] = 0;
-  localSocketAddr.sa_data[5] = 0;
-
-  // Bind socket
-  _DEBUG("Binding local socket...\n");
-  int sockStatus;
-  if ((sockStatus = bind(ulSocket, &localSocketAddr, sizeof(sockaddr))) != 0) {
-    _DEBUG("binding failed: %d\n", sockStatus);
-    return -1;
-  }
-
-  _DEBUG("Listening on local socket...\n");
-  int listenStatus = listen(ulSocket, 1);
-  if (listenStatus != 0) {
-    _DEBUG("cannot listen to socket: %d\n", listenStatus);
-    return -1;
-  }
-
-  return 0;
-}
-
-void receiveTCP (int ulSocket)
-{
-  long clientDescriptor = -1;
-  sockaddr addrClient;
-  socklen_t addrlen = sizeof(sockaddr);
-
-  setsockopt(ulSocket, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, SOCK_ON, 4);
-
-  while (1) {
-    clientDescriptor = accept(ulSocket, &addrClient, &addrlen);
-
-    if (clientDescriptor >= 0 ) {
-      _DEBUG("Client discovered: %ld\n", clientDescriptor);
-
-      delayMicroseconds(100);
-
-      int recvStatus = recv(clientDescriptor, pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE, 0);
-      _DEBUG("Received packet from client. %d\n", recvStatus);
-
-      const char *res = "HTTP/1.0 200 OK\r\nContent-Length: 19\r\nContent-Type: text/html\r\n\r\n<h1>HI BITCHES</h1>";
-      int sendStatus = send(clientDescriptor, res, strlen(res), 0);
-      _DEBUG("Response sent: %d\n", sendStatus);
-
-      int closeStatus = closesocket(clientDescriptor);
-      _DEBUG("Socket close status: %d\n", closeStatus);
-      delayMicroseconds(100);
-    } else if (clientDescriptor == -57) {
-      // BUG: Socket inactive so reopen socket
-      // Inactive Socket, close and reopen it
-      ulSocket = closesocket(ulSocket);
-
-      ulSocket = openTCP();
-      listenTCP(ulSocket, 4444);
-      _DEBUG("Had to re-open server due to bug.\n");
-    }
-    // hci_unsolicited_event_handler();
-
-    delayMicroseconds(100);
-  }
-}
-
-
-/**
- * Startup
- */
-
-void getIpAddr (char * ipBuffer)
-{
-  tNetappIpconfigRetArgs ipinfo;
-  netapp_ipconfig(&ipinfo);
-  // iptostring(ipinfo.aucIP, ipBuffer);
-  // DispatcherUartSendPacket("Ip = ", 5);
-  // DispatcherUartSendPacket((unsigned char*) ipvalue, length);
-}
-
-void printMAC (void)
-{
-  unsigned char cMacFromEeprom[MAC_ADDR_LEN];
-
-  if (nvmem_get_mac_address(cMacFromEeprom)) {
-    _DEBUG("No mac address found\n");
-  } else {
-    _DEBUG("MAC: %d", cMacFromEeprom[0]);
-    for(int i = 1; i < MAC_ADDR_LEN; i++){
-      _DEBUG(".%d", cMacFromEeprom[i]);
-    }
-    _DEBUG("\n");
-  }
-}
-
-void initializeCC3000 (void)
-{
-  SpiInit();
-  delayMicroseconds(100);
-
-  _DEBUG("Calling wlan_init\n");
-  wlan_init(CC3000_UsynchCallback, NULL, NULL, NULL, ReadWlanInterruptPin, 
-    WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
-
-  _DEBUG("Calling wlan_start...\n");
-  wlan_start(0);
-
-  printMAC();
-  
-  _DEBUG("setting event mask\n");
-  wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
-
-	_DEBUG("config wlan\n");
-	wlan_ioctl_set_connection_policy(0, 0, 0);
-
-	_DEBUG("Attempting to connect...\n");
-	int connected = -1;
-	connected = wlan_connect(WLAN_SEC_WPA2,ssid,8, 0, keys, 8);
-	_DEBUG("Connected: %d\n", connected);
-	
-  unsigned char version[2];
-	if (!nvmem_read_sp_version(version)) {
-		_DEBUG("Firmware version: %d.%d\n", version[0], version[1]);
-	} else {
-		_DEBUG("Failed to read version\n");
-	}
-}
+//   // return bytesReceived;
+// }

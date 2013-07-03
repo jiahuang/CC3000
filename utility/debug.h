@@ -5,7 +5,9 @@
 extern "C" {
 #endif
 
-void _DEBUG (char *fmt, ... );
+void _CC_DEBUG (char *fmt, ... );
+
+#define CC_DEBUG(format, ...) _CC_DEBUG((char *) F(format), ##__VA_ARGS__)
 
 #ifdef  __cplusplus
 }

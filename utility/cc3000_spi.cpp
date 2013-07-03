@@ -70,7 +70,6 @@ int keyIndex = 0;
 unsigned char printOnce = 1;
 
 volatile unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
-uint8_t ulCC3000DHCPIP[4];
 
 unsigned char ucStopSmartConfig;
 
@@ -101,6 +100,7 @@ void SpiReadHeader(void);
 // resides shall never be written. In case it is written - the overrun occured and either recevie function
 // or send function will stuck forever.
 #define CC3000_BUFFER_MAGIC_NUMBER (0xDE)
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 //#pragma is used for determine the memory location for a specific variable.                            ///        ///
@@ -928,12 +928,8 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
       //sprintf( (char*)pucCC3000_Rx_Buffer,"IP:%d.%d.%d.%d\f\r", data[3],data[2], data[1], data[0] );
 
       ulCC3000DHCP = 1;
-      ulCC3000DHCPIP[0] = data[3];
-      ulCC3000DHCPIP[1] = data[2];
-      ulCC3000DHCPIP[2] = data[1];
-      ulCC3000DHCPIP[3] = data[0];
 
-      _DEBUG("DHCP Connected with IP: %d.%d.%d.%d\n", ulCC3000DHCPIP[0], ulCC3000DHCPIP[1], ulCC3000DHCPIP[2], ulCC3000DHCPIP[3]);
+      CC_DEBUG("DHCP Connected with IP: %d.%d.%d.%d\n", data[3], data[2], data[1], data[0]);
 
       // turnLedOn(7);
     }
