@@ -33,8 +33,6 @@
 #define eSPI_STATE_READ_IRQ               (6)
 #define eSPI_STATE_READ_FIRST_PORTION     (7)
 #define eSPI_STATE_READ_EOT               (8)
-#define CC3000_APP_BUFFER_SIZE            (5)
-#define CC3000_RX_BUFFER_OVERHEAD_SIZE    (20)
 
 
 #define CC3000_nIRQ     (2)
@@ -89,8 +87,6 @@ typedef struct
 
 sockaddr tSocketAddr;
 tSpiInformation sSpiInformation;
-
-// unsigned char pucCC3000_Rx_Buffer[CC3000_APP_BUFFER_SIZE + CC3000_RX_BUFFER_OVERHEAD_SIZE];
 
 void SpiWriteDataSynchronous(unsigned char *data, unsigned short size);
 void SpiWriteAsync(const unsigned char *data, unsigned short size);

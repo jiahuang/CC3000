@@ -20,7 +20,7 @@ char ssid[] = "HCPGuest";                     // your network SSID (name)
 unsigned char keys[] = "kendall!";       // your network key
 int connected = -1;
 
-#define CC3000_APP_BUFFER_SIZE                  (128)
+#define CC3000_APP_BUFFER_SIZE                  (5)
 #define CC3000_RX_BUFFER_OVERHEAD_SIZE          (20)
 
 unsigned char pucCC3000_Rx_Buffer[CC3000_APP_BUFFER_SIZE + CC3000_RX_BUFFER_OVERHEAD_SIZE] = { 0 };
@@ -32,11 +32,132 @@ void wait_dhcp ()
   }
 }
 
+
+
+
+enum http_header_status
+{
+    http_header_status_done,
+    http_header_status_continue,
+    http_header_status_version_character,
+    http_header_status_code_character,
+    http_header_status_status_character,
+    http_header_status_key_character,
+    http_header_status_value_character,
+    http_header_status_store_keyvalue
+};
+
+static unsigned char http_header_state[] = {
+/*     *    \t    \n   \r    ' '     ,     :   PAD */
+    0x80,    1, 0xC1, 0xC1,    1, 0x80, 0x80, 0xC1, /* state 0: HTTP version */
+    0x81,    2, 0xC1, 0xC1,    2,    1,    1, 0xC1, /* state 1: Response code */
+    0x82, 0x82,    4,    3, 0x82, 0x82, 0x82, 0xC1, /* state 2: Response reason */
+    0xC1, 0xC1,    4, 0xC1, 0xC1, 0xC1, 0xC1, 0xC1, /* state 3: HTTP version newline */
+    0x84, 0xC1, 0xC0,    5, 0xC1, 0xC1,    6, 0xC1, /* state 4: Start of header field */
+    0xC1, 0xC1, 0xC0, 0xC1, 0xC1, 0xC1, 0xC1, 0xC1, /* state 5: Last CR before end of header */
+    0x87,    6, 0xC1, 0xC1,    6, 0x87, 0x87, 0xC1, /* state 6: leading whitespace before header value */
+    0x87, 0x87, 0xC4,   10, 0x87, 0x88, 0x87, 0xC1, /* state 7: header field value */
+    0x87, 0x88,    6,    9, 0x88, 0x88, 0x87, 0xC1, /* state 8: Split value field value */
+    0xC1, 0xC1,    6, 0xC1, 0xC1, 0xC1, 0xC1, 0xC1, /* state 9: CR after split value field */
+    0xC1, 0xC1, 0xC4, 0xC1, 0xC1, 0xC1, 0xC1, 0xC1, /* state 10:CR after header value */
+};
+
+int http_parse_header_char(int* state, char ch)
+{
+    int newstate, code = 0;
+    switch (ch) {
+    case '\t': code = 1; break;
+    case '\n': code = 2; break;
+    case '\r': code = 3; break;
+    case  ' ': code = 4; break;
+    case  ',': code = 5; break;
+    case  ':': code = 6; break;
+    }
+
+    newstate = http_header_state[*state * 8 + code];
+    *state = (newstate & 0xF);
+
+    switch (newstate) {
+    case 0xC0: return http_header_status_done;
+    case 0xC1: return http_header_status_done;
+    case 0xC4: return http_header_status_store_keyvalue;
+    case 0x80: return http_header_status_version_character;
+    case 0x81: return http_header_status_code_character;
+    case 0x82: return http_header_status_status_character;
+    case 0x84: return http_header_status_key_character;
+    case 0x87: return http_header_status_value_character;
+    case 0x88: return http_header_status_value_character;
+    }
+
+    return http_header_status_continue;
+}
+
+int http_parse_header (int ulSocket, char (*http_receive_byte)(int), void (*on_header)(char *, int), void (*on_body)(int status, int content_len))
+{
+  int code = 0, content_len = 0;
+
+  int state = 0;
+  char buf[32] = { 0 };
+  int keyn = 0, valn = 0;
+  uint8_t is_content_len_header = 0;
+
+  while (true) {
+    char ch = http_receive_byte(ulSocket);
+
+    switch (http_parse_header_char(&state, ch)) {
+      case http_header_status_done:
+        on_body(code, content_len);
+        return content_len;
+        break;
+
+      case http_header_status_code_character:
+        code = code * 10 + ch - '0';
+        break;
+
+      case http_header_status_key_character:
+        if (keyn + 1 < sizeof(buf)) {
+          buf[keyn] = tolower(ch);
+          keyn++;
+        }
+        break;
+
+      case http_header_status_value_character:
+        if (keyn > 0) {
+          _DEBUG("keyn %d compare %d\n", keyn, strncmp(buf, "content-length", keyn));
+          buf[keyn] = '\0';
+          if (keyn == 14 && 0 == strncmp(buf, "content-length", keyn)) {
+            is_content_len_header = 1;
+          }
+          on_header(buf, keyn);
+          keyn = 0;
+        }
+
+        buf[valn] = ch;
+        if (valn + 2 < sizeof(buf)) {
+          valn++;
+        }
+        break;
+
+      case http_header_status_store_keyvalue:
+        if (is_content_len_header) {
+          for (int i = 0; i < valn; i++) {
+            content_len = content_len * 10 + buf[i] - '0';
+          }
+          is_content_len_header = 0;
+        }
+        valn = keyn = 0;
+        break;
+    }
+  }
+}
+
+
+
 /** 
  * UDP
  */
 
-long openUDP ()
+int openUDP ()
 {
 	wait_dhcp();
 
@@ -44,13 +165,13 @@ long openUDP ()
 	return socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 }
 
-long closeUDP (long ulSocket)
+int closeUDP (int ulSocket)
 {
 	closesocket(ulSocket);
 	return 0xFFFFFFFF;
 }
 
-void listenUDP (long ulSocket)
+void listenUDP (int ulSocket)
 {
 	sockaddr localSocketAddr;
 	localSocketAddr.sa_family = AF_INET;
@@ -70,7 +191,7 @@ void listenUDP (long ulSocket)
 	}
 }
 
-const char *receiveUDP (long ulSocket)
+const char *receiveUDP (int ulSocket)
 {
 	// the family is always AF_INET
 	sockaddr remoteSocketAddr;
@@ -97,7 +218,7 @@ const char *receiveUDP (long ulSocket)
 	return (const char *) pucCC3000_Rx_Buffer;
 }
 
-void sendUDP (long ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len)
+void sendUDP (int ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len)
 {
 	sockaddr tSocketAddr;
 
@@ -119,21 +240,20 @@ void sendUDP (long ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3,
  * TCP
  */
 
-long openTCP ()
+int openTCP ()
 {
   wait_dhcp();
   // open a socket
   return socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 }
 
-long closeTCP (long ulSocket)
+int closeTCP (int ulSocket)
 {
   closesocket(ulSocket);
   return 0xFFFFFFFF;
 }
 
-
-int requestTCP (long ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len)
+int requestTCP (int ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len)
 {
   // the family is always AF_INET
   sockaddr remoteSocketAddr;
@@ -155,12 +275,81 @@ int requestTCP (long ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip
 
   int sentLen = send(ulSocket, buf, buf_len, 0);
   _DEBUG("Sent length of TCP: %d\n", sentLen);
-  int bytesReceived = recv(ulSocket, pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE, 0);
-  _DEBUG("Result of TCP: %d\n", bytesReceived);
-  return bytesReceived;
+  return sentLen;
 }
 
-int listenTCP (long ulSocket, int port)
+int poll_readable_socket (int ulSocket) 
+{
+  fd_set readSet;        // Socket file descriptors we want to wake up for, using select()
+  FD_ZERO(&readSet);
+  FD_SET(ulSocket, &readSet); 
+  struct timeval timeout;
+
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 10000; // 10ms
+
+  int rcount = select( ulSocket+1, &readSet, (fd_set *) 0, (fd_set *) 0, &timeout );
+  int flag = FD_ISSET(ulSocket, &readSet);
+  return flag;
+}
+
+int block_readable_socket (int ulSocket) {
+  int timeout = 10;
+  while (true) {
+    if (poll_readable_socket(ulSocket)) {
+      break;
+    }
+    if (--timeout == 0) {
+      return -1;
+    }
+    delay(100);
+  }
+  return 0;
+}
+
+char http_receive_byte (int ulSocket)
+{
+  while (recv(ulSocket, pucCC3000_Rx_Buffer, 1, 0) == 0) {
+    delay(100);
+  }
+  return pucCC3000_Rx_Buffer[0];
+}
+
+void on_http_header (char *buf, int len)
+{
+  _DEBUG("HEADER matched %s\n", buf);
+}
+
+void on_http_body (int status, int len)
+{
+  _DEBUG("BODY %d length %d\n", status, len);
+}
+
+int crudeReadTCP (int ulSocket)
+{
+  if (block_readable_socket(ulSocket) < 0) {
+    return -1;
+  }
+  delay(100);
+
+  http_parse_header(ulSocket, http_receive_byte, on_http_header, on_http_body);
+
+  // int totalbytes = 0, bytesReceived = 0;
+  // while (block_readable_socket(ulSocket) == 0) {
+  //   bytesReceived = recv(ulSocket, pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE, 0);
+  //   if (bytesReceived <= 0) {
+  //     break;
+  //   }
+  //   totalbytes += bytesReceived;
+  //   pucCC3000_Rx_Buffer[bytesReceived] = '\0';
+  //   _DEBUG("Result of TCP %d bytes: \"%s\"\n", bytesReceived, pucCC3000_Rx_Buffer);
+  // } 
+
+  // return bytesReceived;
+}
+
+
+int listenTCP (int ulSocket, int port)
 {
   sockaddr localSocketAddr;
   localSocketAddr.sa_family = AF_INET;
@@ -189,7 +378,7 @@ int listenTCP (long ulSocket, int port)
   return 0;
 }
 
-void receiveTCP (long ulSocket)
+void receiveTCP (int ulSocket)
 {
   long clientDescriptor = -1;
   sockaddr addrClient;
@@ -202,6 +391,8 @@ void receiveTCP (long ulSocket)
 
     if (clientDescriptor >= 0 ) {
       _DEBUG("Client discovered: %ld\n", clientDescriptor);
+
+      delayMicroseconds(100);
 
       int recvStatus = recv(clientDescriptor, pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE, 0);
       _DEBUG("Received packet from client. %d\n", recvStatus);

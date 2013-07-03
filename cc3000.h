@@ -22,18 +22,20 @@ extern uint8_t ulCC3000DHCPIP[4];
 
 extern void initializeCC3000(void);
 
-extern long openUDP (void);
-extern long closeUDP (long socket);
-extern void sendUDP (long ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len);
-extern void listenUDP (long socket);
-extern const char *receiveUDP (long);
+extern int openUDP (void);
+extern int closeUDP (int socket);
+extern void sendUDP (int ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len);
+extern void listenUDP (int socket);
+extern const char *receiveUDP (int ulSocket);
 
-extern long openTCP ();
-extern long closeTCP (long ulSocket);
-extern int requestTCP (long ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len);
-extern int listenTCP (long ulSocket, int port);
-extern void receiveTCP (long ulSocket);
+extern int openTCP ();
+extern int closeTCP (int ulSocket);
+extern int requestTCP (int ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port, uint8_t *buf, unsigned long buf_len);
+extern int pollReadTCP (int ulSocket);
+extern int crudeReadTCP (int ulSocket);
 
+extern int listenTCP (int ulSocket, int port);
+extern void receiveTCP (int ulSocket);
 
 //*****************************************************************************
 //
