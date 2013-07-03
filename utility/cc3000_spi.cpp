@@ -771,11 +771,12 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 
   if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE)
   {
-    // ulSmartConfigFinished = 1;
-    // ucStopSmartConfig     = 1;  
+    ulSmartConfigFinished = 1;
+    ucStopSmartConfig     = 1;  
     // if smart config is done, stop advertising
     mdnsAdvertiser(1,device_name,strlen(device_name));
 
+    Serial.println("smart config finished");
     // stop the smart config blinking
     digitalWrite(ConnLED, LOW);
     digitalWrite(ErrorLED, LOW);

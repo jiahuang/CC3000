@@ -14,6 +14,7 @@ extern "C" {
 
 #define ConnLED 7
 #define ErrorLED 6
+#define CC3000_UNENCRYPTED_SMART_CONFIG 1
 
 //*****************************************************************************
 //

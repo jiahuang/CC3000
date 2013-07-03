@@ -165,13 +165,16 @@ void initialize(void){
 	// int connected = -1;
 	// connected = wlan_connect(WLAN_SEC_WPA2,ssid,8, 0, keys, 8);
 	// Serial.println(connected);
+
+  StartSmartConfig();
 }
 
 void StartSmartConfig(void)
 {
-  if (DEBUG_MODE) {
+
+  // if (DEBUG_MODE) {
     Serial.println("Start Smart Config");
-  }
+  // }
   ulSmartConfigFinished = 0;
   ulCC3000Connected = 0;
   ulCC3000DHCP = 0;
@@ -182,7 +185,7 @@ void StartSmartConfig(void)
     digitalWrite(ErrorLED, HIGH);
     return;
   }
-  
+
   if (wlan_ioctl_del_profile(255) != 0) {
     digitalWrite(ErrorLED, HIGH);
     return;
@@ -194,6 +197,8 @@ void StartSmartConfig(void)
     delayMicroseconds(100);
   }
 
+  Serial.println("waiting for disconnect");
+
   // Trigger the Smart Config process
   // Start blinking LED6 during Smart Configuration process
   digitalWrite(ConnLED, HIGH);  
@@ -201,48 +206,53 @@ void StartSmartConfig(void)
     digitalWrite(ErrorLED, HIGH);
     return;
   }
+  Serial.println("set prefix");
   digitalWrite(ConnLED, LOW);      
 
   // Start the SmartConfig start process
-  if (wlan_smart_config_start(1) != 0){
+  if (wlan_smart_config_start(0) != 0){
     digitalWrite(ErrorLED, HIGH);
     return;
   }
+  Serial.println("smart config start");
 
   digitalWrite(ConnLED, HIGH);
 
   // Wait for Smartconfig process complete
   while (ulSmartConfigFinished == 0)
   {
-    delayMicroseconds(100);
+    delay(500);
     digitalWrite(ConnLED, LOW);
-    delayMicroseconds(100);
+    delay(500);
     digitalWrite(ConnLED, HIGH);
   }
+
+  Serial.println("smart config finished");
 
   digitalWrite(ConnLED, LOW);
 
 
   // #ifndef CC3000_UNENCRYPTED_SMART_CONFIG
-  // create new entry for AES encryption key
-  if (nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16) != 0){
-    digitalWrite(ErrorLED, HIGH);
-    return;
-  }
+  // // create new entry for AES encryption key
+  // if (nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16) != 0){
+  //   digitalWrite(ErrorLED, HIGH);
+  //   return;
+  // }
 
-  // write AES key to NVMEM
-  if (aes_write_key((unsigned char *)(&smartconfigkey[0])) != 0){
-    digitalWrite(ErrorLED, HIGH);
-    return;
-  }
+  // // write AES key to NVMEM
+  // if (aes_write_key((unsigned char *)(&smartconfigkey[0])) != 0){
+  //   digitalWrite(ErrorLED, HIGH);
+  //   return;
+  // }
 
-  // Decrypt configuration information and add profile
-  if (wlan_smart_config_process() != 0) {
-    digitalWrite(ErrorLED, HIGH);
-    return;
-  }
+  // // Decrypt configuration information and add profile
+  // if (wlan_smart_config_process() != 0) {
+  //   digitalWrite(ErrorLED, HIGH);
+  //   return;
+  // }
   // #endif    
-
+  
+  
   // Configure to connect automatically to the AP retrieved in the 
   // Smart config process. Enabled fast connect.
   if (wlan_ioctl_set_connection_policy(DISABLE, ENABLE, ENABLE) != 0){
@@ -258,9 +268,10 @@ void StartSmartConfig(void)
 
   // Mask out all non-required events
   wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
-  if (DEBUG_MODE) {
+  // if (DEBUG_MODE) {
     Serial.print("Config done");
-  }
+  // }
+  
 }
 
 
