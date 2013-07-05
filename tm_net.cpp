@@ -3,7 +3,7 @@
 
 #include "tm_net.h"
 #include "tm_debug.h"
-#include "cc3000_spi.h"
+#include "host_spi.h"
 #include "utility/nvmem.h"
 #include "utility/wlan.h"
 #include "utility/hci.h"

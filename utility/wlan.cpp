@@ -44,7 +44,7 @@
 #include <string.h>
 #include "wlan.h"
 #include "hci.h"
-#include "cc3000_spi.h"
+#include "host_spi.h"
 #include "socket.h"
 #include "nvmem.h"
 #include "security.h"

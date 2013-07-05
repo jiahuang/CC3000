@@ -1,15 +1,15 @@
 #include <Arduino.h>
 
 #include "SPI.h"
-#include "wlan.h"
-#include "nvmem.h"
-#include "security.h"
-#include "hci.h"
-#include "os.h"
-#include "netapp.h"
-#include "evnt_handler.h"
-#include "cc3000_spi.h"
 #include "tm_debug.h"
+#include "host_spi.h"
+#include "utility/wlan.h"
+#include "utility/nvmem.h"
+#include "utility/security.h"
+#include "utility/hci.h"
+#include "utility/os.h"
+#include "utility/netapp.h"
+#include "utility/evnt_handler.h"
 
 #define READ                    3
 #define WRITE                   1

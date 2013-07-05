@@ -51,7 +51,7 @@
 #include "wlan.h"
 #include "socket.h"
 #include "netapp.h"
-#include "cc3000_spi.h"
+#include "host_spi.h"
  
 
 #define DEBUG_LED (4)
