@@ -1,5 +1,6 @@
-#include "SPI.h"
 #include <Arduino.h>
+
+#include "SPI.h"
 #include "wlan.h"
 #include "nvmem.h"
 #include "security.h"
@@ -8,7 +9,7 @@
 #include "netapp.h"
 #include "evnt_handler.h"
 #include "cc3000_spi.h"
-#include "debug.h"
+#include "tm_debug.h"
 
 #define READ                    3
 #define WRITE                   1
@@ -107,7 +108,7 @@ void SpiReadHeader(void);
 //__no_init is used to prevent the buffer initialization in order to prevent hardware WDT expiration    ///
 // before entering to 'main()'.                                                                         ///
 //for every IDE, different syntax exists :          1.   __CCS__ for CCS v5                    ///
-//                                                  2.  __IAR_SYSTEMS_ICC__ for IAR Embedded Workbench  ///
+//                                                  2.  __IAR_SYSTEMS_ITM__ for IAR Embedded Workbench  ///
 // *CCS does not initialize variables - therefore, __no_init is not needed.                             ///
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -929,7 +930,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 
       ulCC3000DHCP = 1;
 
-      CC_DEBUG("DHCP Connected with IP: %d.%d.%d.%d\n", data[3], data[2], data[1], data[0]);
+      TM_DEBUG("DHCP Connected with IP: %d.%d.%d.%d\n", data[3], data[2], data[1], data[0]);
 
       // turnLedOn(7);
     }

@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-void _CC_DEBUG (char *fmt, ... )
+void _TM_DEBUG (char *fmt, ... )
 {
   char tmp[128]; // resulting string limited to 128 chars
   va_list args;

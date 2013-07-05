@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-void _CC_DEBUG (char *fmt, ... );
+void _TM_DEBUG (char *fmt, ... );
 
-#define CC_DEBUG(format, ...) _CC_DEBUG((char *) F(format), ##__VA_ARGS__)
+#define TM_DEBUG(format, ...) _TM_DEBUG((char *) F(format), ##__VA_ARGS__)
 
 #ifdef  __cplusplus
 }
