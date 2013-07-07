@@ -67,7 +67,7 @@ const unsigned char smartconfigkey[] = {0x73,0x6d,0x61,0x72,0x74,0x63,0x6f,0x6e,
 
 //00:11:95:41:38:65
 // unsigned char bssid[] = "000000";
-int keyIndex = 0; 
+static int keyIndex = 0; 
 unsigned char printOnce = 1;
 
 volatile unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
@@ -930,7 +930,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 
       ulCC3000DHCP = 1;
 
-      TM_DEBUG("DHCP Connected with IP: %d.%d.%d.%d\n", data[3], data[2], data[1], data[0]);
+      TM_DEBUG("DHCP Connected with IP: %hhu.%hhu.%hhu.%hhu\n", (unsigned char) data[3], (unsigned char) data[2], (unsigned char) data[1], (unsigned char) data[0]);
 
       // turnLedOn(7);
     }

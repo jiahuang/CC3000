@@ -8,6 +8,7 @@ extern "C" {
 void _TM_DEBUG (char *fmt, ... );
 
 #define TM_DEBUG(format, ...) _TM_DEBUG((char *) F(format), ##__VA_ARGS__)
+// #define TM_DEBUG(...)
 
 #ifdef  __cplusplus
 }
