@@ -136,10 +136,7 @@ void csn(int mode)
 //*****************************************************************************
 void SpiCleanGPIOISR(void)
 {
-  if (DEBUG_MODE)
-  {
-    Serial.println("SpiCleanGPIOISR");
-  }
+  TM_DEBUG("SpiCleanGPIOISR\n");
 
   //add code
 }
@@ -160,19 +157,16 @@ void SpiCleanGPIOISR(void)
 void
 SpiClose(void)
 {
-  if (DEBUG_MODE)
-  {
-    Serial.println("SpiClose");
-  }
+  TM_DEBUG("SpiClose\n");
 
   if (sSpiInformation.pRxPacket)
   {
     sSpiInformation.pRxPacket = 0;
   }
 
-  // //
-  // // Disable Interrupt in GPIOA module...
-  // //
+  //
+  // Disable Interrupt in GPIOA module...
+  //
   tSLInformation.WlanInterruptDisable();
 }
 
@@ -185,8 +179,6 @@ void SpiInit(){
   pinMode(CC3000_nIRQ, INPUT);
   attachInterrupt(0, SPI_IRQ, FALLING); //Attaches Pin 2 to interrupt 1
   
-  //Serial.print("IRQ is at: ");
-  //Serial.println(digitalRead(CC3000_nIRQ));
   pinMode(HOST_nCS, OUTPUT);
   pinMode(HOST_VBAT_SW_EN, OUTPUT);
   //Initialize SPI
@@ -221,11 +213,7 @@ void SpiInit(){
 //*****************************************************************************
 void SpiOpen(gcSpiHandleRx pfRxHandler)
 {
-
-  if (DEBUG_MODE)
-  {
-    Serial.println("SpiOpen");
-  }
+  TM_DEBUG("SpiOpen\n");
 
   sSpiInformation.ulSpiState = eSPI_STATE_POWERUP;
 
@@ -244,10 +232,7 @@ void SpiOpen(gcSpiHandleRx pfRxHandler)
   tSLInformation.WlanInterruptEnable();
 
 
-  if (DEBUG_MODE)
-  {
-    Serial.println("Completed SpiOpen");
-  }
+  TM_DEBUG("Completed SpiOpen\n");
 }
 
 
@@ -269,12 +254,9 @@ long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 {
  
   //
-    // workaround for first transaction
-    //
-  if (DEBUG_MODE)
-  {
-    Serial.println("SpiFirstWrite");
-  }
+  // workaround for first transaction
+  //
+  TM_DEBUG("SpiFirstWrite\n");
 
   // digitalWrite(HOST_nCS, LOW);
   csn(LOW);
@@ -306,11 +288,6 @@ long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 
 long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 {
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("SpiWrite");
-  // }
-
   unsigned char ucPad = 0;
 
   //
@@ -812,31 +789,31 @@ void print_spi_state(void)
     switch (sSpiInformation.ulSpiState)
     {
       case eSPI_STATE_POWERUP:
-        Serial.println("POWERUP");
+        TM_DEBUG("POWERUP\n");
         break;
       case eSPI_STATE_INITIALIZED:
-        Serial.println("INITIALIZED");
+        TM_DEBUG("INITIALIZED\n");
         break;
       case eSPI_STATE_IDLE:
-        Serial.println("IDLE");
+        TM_DEBUG("IDLE\n");
         break;
       case eSPI_STATE_WRITE_IRQ:
-        Serial.println("WRITE_IRQ");
+        TM_DEBUG("WRITE_IRQ\n");
         break;
       case eSPI_STATE_WRITE_FIRST_PORTION:
-        Serial.println("WRITE_FIRST_PORTION");
+        TM_DEBUG("WRITE_FIRST_PORTION\n");
         break;
       case eSPI_STATE_WRITE_EOT:
-        Serial.println("WRITE_EOT");
+        TM_DEBUG("WRITE_EOT\n");
         break;
       case eSPI_STATE_READ_IRQ:
-        Serial.println("READ_IRQ");
+        TM_DEBUG("READ_IRQ\n");
         break;
       case eSPI_STATE_READ_FIRST_PORTION:
-        Serial.println("READ_FIRST_PORTION");
+        TM_DEBUG("READ_FIRST_PORTION\n");
         break;
       case eSPI_STATE_READ_EOT:
-        Serial.println("STATE_READ_EOT");
+        TM_DEBUG("STATE_READ_EOT\n");
         break;
       default:
         break;
@@ -891,7 +868,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
   if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT)
   {
     ulCC3000Connected = 1;
-    Serial.println("connected");
+    TM_DEBUG("connected\n");
     if (DEBUG_MODE) {
       digitalWrite(DEBUG_LED, HIGH);
     }
@@ -906,7 +883,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
     ulCC3000DHCP_configured = 0;
     printOnce = 1;
     
-    Serial.println("disconnected");
+    TM_DEBUG("disconnected\n");
 
     // Turn off the LED7
     //turnLedOff(7);
@@ -918,7 +895,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
   if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP)
   {
 
-    Serial.println("dhcp");
+    TM_DEBUG("dhcp\n");
     // Notes: 
     // 1) IP config parameters are received swapped
     // 2) IP config parameters are valid only if status is OK, i.e. ulCC3000DHCP becomes 1
@@ -937,7 +914,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
     else
     {
       ulCC3000DHCP = 0;
-      Serial.println("DHCP failed");
+      TM_DEBUG("DHCP failed\n");
       //turnLedOff(8);
     }
   }
