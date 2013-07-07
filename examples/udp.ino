@@ -21,19 +21,16 @@ void setup ()
     ; // wait for serial port to connect. Needed for Leonardo only
   }
   
-  Serial.println(F("Send anything."));
-  while (!Serial.available()) { continue; }
-  
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
-    Serial.println(F("WiFi shield not present")); 
+    Serial.println("WiFi shield not present"); 
     // don't continue:
     while(true);
   } 
   
   // attempt to connect to Wifi network:
   while ( status != WL_CONNECTED) { 
-    Serial.print(F("Attempting to connect to SSID: "));
+    Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:    
     status = WiFi.begin(ssid, pass);
@@ -55,8 +52,8 @@ void loop ()
   if (Udp.available())
   {   
     // read the packet into packetBufffer
-    int len = Udp.receive(packetBuffer,255);
-    if (len >0) packetBuffer[len]=0;
+    int len = Udp.receive(inBuffer,255);
+    if (len >0) inBuffer[len]=0;
     
     Serial.print("Received packet from ");
     IPAddress remoteIp = Udp.remoteIP();
@@ -65,10 +62,10 @@ void loop ()
     Serial.println(Udp.remotePort());
 
     Serial.println("Contents:");
-    Serial.println(packetBuffer);
+    Serial.println(inBuffer);
     
     // send a reply, to the IP address and port that sent us the packet we received
-    Udp.send(Udp.remoteIP(), Udp.remotePort(), ReplyBuffer, strlen(ReplyBuffer));
+    Udp.send(Udp.remoteIP(), Udp.remotePort(), outBuffer, strlen(outBuffer));
    }
 }
 
