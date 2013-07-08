@@ -152,14 +152,14 @@ void initialize(void){
   Serial.println("Calling wlan_start...");
   wlan_start(0);
 
-  // printMAC();
-  // printVersion();
+  printMAC();
+  printVersion();
   
   Serial.println("setting event mask");
   wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
 	// Serial.println("config wlan");
-	// wlan_ioctl_set_connection_policy(ENABLE, ENABLE, ENABLE);
+	// wlan_ioctl_set_connection_policy(DISABLE, DISABLE, WlanInterruptDisable);
 
 	// Serial.println("Attempting to connect...");
 	// int connected = -1;
@@ -197,7 +197,7 @@ void StartSmartConfig(void)
     delayMicroseconds(100);
   }
 
-  Serial.println("waiting for disconnect");
+  // Serial.println("waiting for disconnect");
 
   // Trigger the Smart Config process
   // Start blinking LED6 during Smart Configuration process
@@ -207,7 +207,7 @@ void StartSmartConfig(void)
     return;
   }
   Serial.println("set prefix");
-  digitalWrite(ConnLED, LOW);      
+  digitalWrite(ConnLED, LOW);
 
   // Start the SmartConfig start process
   if (wlan_smart_config_start(0) != 0){
@@ -255,7 +255,7 @@ void StartSmartConfig(void)
   
   // Configure to connect automatically to the AP retrieved in the 
   // Smart config process. Enabled fast connect.
-  if (wlan_ioctl_set_connection_policy(DISABLE, ENABLE, ENABLE) != 0){
+  if (wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE) != 0){
     digitalWrite(ErrorLED, HIGH);
     return;
   }
