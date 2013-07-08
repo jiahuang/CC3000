@@ -1,6 +1,8 @@
 #ifndef wifiudp_h
 #define wifiudp_h
 
+#include "IPAddress.h"
+
 #define UDP_TX_PACKET_MAX_SIZE 24
 
 class WiFiDatagram {

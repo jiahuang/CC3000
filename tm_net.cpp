@@ -272,10 +272,10 @@ int tm_net_tcp_connect (int ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uin
   return lerr;
 }
 
-int tm_net_tcp_write (int ulSocket, uint8_t *buf, unsigned long buf_len)
+int tm_net_tcp_write (int ulSocket, const uint8_t *buf, unsigned long buf_len)
 {
   int sentLen = send(ulSocket, buf, buf_len, 0);
-  TM_DEBUG("Wrote %d bytes to TCP socket.\n", sentLen);
+  // TM_DEBUG("Wrote %d bytes to TCP socket.\n", sentLen);
   return sentLen;
 }
 

@@ -197,7 +197,7 @@ void SpiInit(){
   //SPI.setClockDivider(SS, SPI_CLOCK_DIV21);
 
   //For other boards, cant select SS pin. Only divide by 4 to get 4MHz
-  SPI.setClockDivider(SPI_CLOCK_DIV128);
+  SPI.setClockDivider(SPI_CLOCK_DIV4);
 }
 
 //*****************************************************************************

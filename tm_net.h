@@ -42,9 +42,9 @@ extern int tm_net_tcp_open_socket ();
 extern int tm_net_tcp_close_socket (int ulSocket);
 
 extern int tm_net_tcp_connect (int ulSocket, uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3, int port);
-extern int tm_net_tcp_write (int ulSocket, uint8_t *buf, unsigned long buf_len);
+extern int tm_net_tcp_write (int ulSocket, const uint8_t *buf, unsigned long buf_len);
 
-extern int tm_net_tcp_read (int ulSocket, uint8_t buf, int buf_len);
+extern int tm_net_tcp_read (int ulSocket, uint8_t *buf, int buf_len);
 extern int tm_net_tcp_read_byte (int ulSocket);
 extern void tm_net_tcp_read_debug (int ulSocket);
 

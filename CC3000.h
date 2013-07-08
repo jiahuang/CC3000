@@ -11,9 +11,10 @@ extern "C" {
 #include "IPAddress.h"
 #include "WifiClass.h"
 #include "WiFiDatagram.h"
-// #include "WiFiClient.h"
-// #include "WiFiServer.h"
+#include "WiFiClient.h"
+#include "WiFiServer.h"
 
 #define NO_SOCKET_AVAIL  255
+#define CLOSED 255
 
 #endif
