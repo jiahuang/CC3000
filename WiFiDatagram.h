@@ -3,7 +3,7 @@
 
 #define UDP_TX_PACKET_MAX_SIZE 24
 
-class WiFiUDPQueue {
+class WiFiDatagram {
 private:
   uint8_t _sock;  // socket ID
   uint16_t _port; // local port to listen on
@@ -12,7 +12,7 @@ private:
   uint16_t _remotePort;
 
 public:
-  WiFiUDPQueue();  // Constructor
+  WiFiDatagram();  // Constructor
   virtual uint8_t begin(uint16_t);  // initialize, start listening on specified port. Returns 1 if successful, 0 if there are no sockets available to use
   virtual void stop();  // Finish with the UDP socket
 

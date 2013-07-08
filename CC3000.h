@@ -10,7 +10,7 @@ extern "C" {
 
 #include "IPAddress.h"
 #include "WifiClass.h"
-#include "WifiUDPQueue.h"
+#include "WiFiDatagram.h"
 // #include "WiFiClient.h"
 // #include "WiFiServer.h"
 

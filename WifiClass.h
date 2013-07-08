@@ -5,7 +5,7 @@
 
 // TEMP
 #include "tm_net.h"
-#include "WifiUDPQueue.h"
+#include "WiFiDatagram.h"
 #include "utility/socket.h"
 
 extern "C" {
