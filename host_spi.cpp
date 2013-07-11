@@ -47,8 +47,8 @@
 
 #define DEBUG_MODE    (1)
 #define NETAPP_IPCONFIG_MAC_OFFSET        (20)
-#define DEBUG_LED (7)
-
+#define ConnLED (7)
+#define ErrorLED (6)
 
 
 unsigned char tSpiReadHeader[] = {READ, 0, 0, 0, 0};
@@ -181,6 +181,9 @@ void SpiInit(){
   
   pinMode(HOST_nCS, OUTPUT);
   pinMode(HOST_VBAT_SW_EN, OUTPUT);
+  pinMode(ConnLED, OUTPUT);
+  pinMode(ErrorLED, OUTPUT);
+
   //Initialize SPI
   SPI.begin();
 
@@ -375,34 +378,14 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 void SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 {
   tSLInformation.WlanInterruptDisable();
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("SpiWriteDataSynchronous");
-  //  for(int i = 0; i<size; i++) {
-  //    Serial.println(data[i], DEC);
-  //  }
-  //  Serial.println();
-  // }
-  
-  // csn(LOW);
+
   while (size) {
     SPI.transfer(*data);
     size--;
     data++;
-    // if (DEBUG_MODE)
-    // {
-    //  Serial.println(result);
-    // }
   }
-  // csn(HIGH);
-  
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("SpiWriteDataSynchronous done.");
-  //  delayMicroseconds(50);
-  // }
+
   tSLInformation.WlanInterruptEnable();
-  
 }
 
 
@@ -526,87 +509,90 @@ void SpiTriggerRxProcessing(void)
   sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + SPI_HEADER_SIZE);
 }
 
-// void StartSmartConfig(void)
-// {
-//  if (DEBUG_MODE) {
-//    Serial.println("Start Smart Config");
-//  }
-//  ulSmartConfigFinished = 0;
-//  ulCC3000Connected = 0;
-//  ulCC3000DHCP = 0;
-//  OkToDoShutDown=0;
-  
-//  // Reset all the previous configuration
-//  wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);  
-//  wlan_ioctl_del_profile(255);
-  
-//  //Wait until CC3000 is disconnected
-//  while (ulCC3000Connected == 1)
-//  {
-//    delayMicroseconds(100);
-//  }
-  
-//  // Trigger the Smart Config process
-//  // Start blinking LED6 during Smart Configuration process
-//  //digitalWrite(6, HIGH);  
-//  wlan_smart_config_set_prefix((char*)aucCC3000_prefix);
-//  //digitalWrite(6, LOW);      
-  
-//  // Start the SmartConfig start process
-//  wlan_smart_config_start(1);
-  
-//  //turnLedOn(6);                                                                               
-  
-//  // Wait for Smartconfig process complete
-//  while (ulSmartConfigFinished == 0)
-//  {
-//    delayMicroseconds(100);
+void StartSmartConfig(void)
+{
 
-//    //__delay_cycles(6000000);
-    
-//    //digitalWrite(6, LOW);
-    
-//    //__delay_cycles(6000000);
-//    delayMicroseconds(100);
+  ulSmartConfigFinished = 0;
+  ulCC3000Connected = 0;
+  ulCC3000DHCP = 0;
+  OkToDoShutDown=0;
 
-//    //digitalWrite(6, HIGH);  
-    
-//    /*if (DEBUG_MODE) {
-//      Serial.println("looping Smart Config");
-//    }
-//    */
-//  }
+  // Reset all the previous configuration
+
+  if (wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE) != 0) {
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+
+  if (wlan_ioctl_del_profile(255) != 0) {
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+
+  //Wait until CC3000 is disconnected
+  while (ulCC3000Connected == 1)
+  {
+    delayMicroseconds(100);
+  }
+
+  // Serial.println("waiting for disconnect");
+
+  // Trigger the Smart Config process
+  // Start blinking LED6 during Smart Configuration process
+  digitalWrite(ConnLED, HIGH);  
   
-//  //turnLedOn(6);
+  if (wlan_smart_config_set_prefix((char*)aucCC3000_prefix) != 0){
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+
+  digitalWrite(ConnLED, LOW);
+
+  // Start the SmartConfig start process
+  if (wlan_smart_config_start(0) != 0){
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+  if (DEBUG_MODE) {
+    Serial.println("smart config start");
+  }
+
+  digitalWrite(ConnLED, HIGH);
   
-// #ifndef CC3000_UNENCRYPTED_SMART_CONFIG
-//  // create new entry for AES encryption key
-//  nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16);
+  // Wait for Smartconfig process complete
+  while (ulSmartConfigFinished == 0)
+  {
+    delay(500);
+    digitalWrite(ConnLED, LOW);
+    delay(500);
+    digitalWrite(ConnLED, HIGH);
+  }
   
-//  // write AES key to NVMEM
-//  aes_write_key((unsigned char *)(&smartconfigkey[0]));
+  if (DEBUG_MODE) {
+    Serial.println("smart config finished");
+  }
+  digitalWrite(ConnLED, LOW);
+
   
-//  // Decrypt configuration information and add profile
-//  wlan_smart_config_process();
-// #endif    
-  
-//  // Configure to connect automatically to the AP retrieved in the 
-//  // Smart config process
-//  wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
-  
-//  // reset the CC3000
-//  wlan_stop();
-  
-//  delayMicroseconds(100);
-//  //__delay_cycles(6000000);
-  
-//  //DispatcherUartSendPacket((unsigned char*)pucUARTCommandSmartConfigDoneString, sizeof(pucUARTCommandSmartConfigDoneString));
-//  Serial.print("Config done");
-//  wlan_start(0);
-  
-//  // Mask out all non-required events
-//  wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
-// }
+  // Configure to connect automatically to the AP retrieved in the 
+  // Smart config process. Enabled fast connect.
+  if (wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE) != 0){
+    digitalWrite(ErrorLED, HIGH);
+    return;
+  }
+
+  // reset the CC3000
+  wlan_stop();
+
+  delayMicroseconds(500);
+  wlan_start(0);
+
+  // Mask out all non-required events
+  wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+  if (DEBUG_MODE) {
+    Serial.print("Config done");
+  }
+}
 
 
 //*****************************************************************************
@@ -750,10 +736,6 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
   {
     ulCC3000Connected = 1;
     TM_DEBUG("connected\n");
-    if (DEBUG_MODE) {
-      digitalWrite(DEBUG_LED, HIGH);
-    }
-    // Turn on the LED7
   }
   
   if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT)
@@ -765,11 +747,8 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
     
     TM_DEBUG("disconnected\n");
 
-    // Turn off the LED7
-    //turnLedOff(7);
-    
-    // Turn off LED5
-    //turnLedOff(8);          
+    digitalWrite(ConnLED, LOW);
+    digitalWrite(ErrorLED, HIGH);
   }
   
   if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP)
@@ -789,13 +768,13 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 
       TM_DEBUG("DHCP Connected with IP: %hhu.%hhu.%hhu.%hhu\n", (unsigned char) data[3], (unsigned char) data[2], (unsigned char) data[1], (unsigned char) data[0]);
 
-      // turnLedOn(7);
+      digitalWrite(ConnLED, HIGH);
     }
     else
     {
       ulCC3000DHCP = 0;
       TM_DEBUG("DHCP failed\n");
-      //turnLedOff(8);
+      digitalWrite(ConnLED, LOW);
     }
   }
   

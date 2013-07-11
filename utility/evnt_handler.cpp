@@ -512,6 +512,8 @@ hci_unsol_event_handler(char *event_hdr)
 	unsigned long NumberOfReleasedPackets;
 	unsigned long NumberOfSentPackets;
 	
+	unsigned char * event_hdr_us = (unsigned char *)event_hdr;
+
 	STREAM_TO_UINT16(event_hdr, HCI_EVENT_OPCODE_OFFSET,event_type);
 	
 	if (event_type & HCI_EVNT_UNSOL_BASE)
@@ -536,6 +538,17 @@ hci_unsol_event_handler(char *event_hdr)
 				return 1;
 				
 			}
+		}
+	}
+	
+	// weird issue in arduino where 0x8080 doens't register for simple config done
+	if (event_hdr_us[0] == 0x04 && 
+		event_hdr_us[1] == 0x80 && 
+		event_hdr_us[2] == 0x80){
+		digitalWrite(4, HIGH);
+		if( tSLInformation.sWlanCB )
+		{
+			tSLInformation.sWlanCB(HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE, 0, 0);
 		}
 	}
 	

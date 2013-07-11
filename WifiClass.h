@@ -67,6 +67,13 @@ public:
      */
     int begin(char* ssid, const char *passphrase);
 
+    /* Connects with smart config.
+     * get the iphone App from the app store
+     * get the android app here (CC3000 First Time Configuration Downloads) http://processors.wiki.ti.com/index.php/CC3000_Wi-Fi_Downloads1.9 
+     * blocks until dhcp has been set
+     */
+    int beginSmartConfig();
+    
     /* Change Ip configuration settings disabling the dhcp client
         *
         * param local_ip:   Static ip configuration

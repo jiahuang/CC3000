@@ -161,6 +161,10 @@ void tm_net_initialize (void)
   }
 }
 
+void tm_net_smartconfig_initialize(void){
+  StartSmartConfig();
+}
+
 void tm_net_disconnect (void)
 {
   wlan_stop();

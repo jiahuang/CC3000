@@ -58,6 +58,13 @@ int WiFiClass::begin(char* ssid, const char *passphrase)
   return status;
 }
 
+int WiFiClass::beginSmartConfig()
+{
+  tm_net_initialize();
+  tm_net_smartconfig_initialize();
+  tm_net_block_until_dhcp();
+  return WL_CONNECTED;
+}
 // void WiFiClass::config(IPAddress local_ip)
 // {
 //   WiFiDrv::config(1, (uint32_t)local_ip, 0, 0);

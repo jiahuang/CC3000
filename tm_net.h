@@ -11,6 +11,7 @@ extern "C" {
 extern unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
 
 extern void tm_net_initialize (void);
+extern void tm_net_smartconfig_initialize(void);
 extern void tm_net_disconnect (void);
 // extern uint8_t tm_net_firmware_version ();
 extern int tm_net_connect_wpa2 (const char *ssid, const char *keys);

@@ -1,6 +1,25 @@
 #include <SPI.h>
 #include <cc3000.h>
-
+/*
+ * This is a UDP example for the cc3000
+ * In order to test this:
+ * 1. fill in the ssid (network name)
+ * 2. fill in the network password
+ * 3. Wait until the Connection LED turns on 
+ * 4. You should get an output that looks like
+ *    DHCP Connected with IP: 10.1.90.49
+ * 5. Use netcat to open up a UDP connection. Type in the following into the terminal
+ *    terminal >> nc -u 10.1.90.49 2390
+ *    where 2390 is the specified localPort (2390 by default)
+ * 6. Type into the terminal once the UDP connection is opened. Mesages should flow between the cc3000 and your computer
+ *    terminal >> nc -u 10.1.90.49 2390
+ *                okok
+ *                acknowledged
+ *    cc3000 >> Recieved 4 UDP bytes
+ *              Received packet from 10.1.90.138, port 4444
+ *              Contents:
+ *              okok
+ */
 int status = WL_IDLE_STATUS;
 char ssid[] = "...";                 // your network SSID (name) 
 char pass[] = "...";                 // your network password (use for WPA, or use as key for WEP)
@@ -11,7 +30,7 @@ unsigned int localPort = 2390;       // local port to listen on
 char inBuffer[255];                  // buffer to hold incoming packet
 char outBuffer[] = "acknowledged";   // a string to send back
 
-WiFiUDPQueue Udp;
+WiFiDatagram Udp;
 
 void setup ()
 {
@@ -29,21 +48,24 @@ void setup ()
   } 
   
   // attempt to connect to Wifi network:
+  // select smart config or regular connection
   while ( status != WL_CONNECTED) { 
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:    
     status = WiFi.begin(ssid, pass);
-  
-    // wait 10 seconds for connection:
-    // delay(10000);
+    
+    // uncomment this if you want to auto start smart config
+    // status = WiFi.beginSmartConfig();
   } 
+  
   Serial.println("Connected to wifi");
   printWifiStatus();
   
   Serial.println("\nStarting connection to server...");
   // if you get a connection, report back via serial:
   Udp.begin(localPort);  
+
 }
 
 void loop ()

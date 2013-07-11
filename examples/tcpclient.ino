@@ -1,8 +1,8 @@
 #include <SPI.h>
 #include <CC3000.h>
 
-char ssid[] = "...";    //  your network SSID (name) 
-char pass[] = "...";    // your network password (use for WPA, or use as key for WEP)
+char ssid[] = "HCPGuest";    //  your network SSID (name) 
+char pass[] = "kendall!";    // your network password (use for WPA, or use as key for WEP)
 int keyIndex = 0;       // your network key Index number (needed only for WEP)
 
 int status = WL_IDLE_STATUS;

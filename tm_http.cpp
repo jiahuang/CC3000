@@ -1,3 +1,11 @@
+#include <Arduino.h>
+#include <string.h>
+
+#include "tm_net.h"
+#include "tm_debug.h"
+#include "host_spi.h"
+
+
 /**
  * HTTP
  */
