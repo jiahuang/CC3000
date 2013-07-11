@@ -1,8 +1,8 @@
 #include <SPI.h>
 #include <CC3000.h>
 
-char ssid[] = "HCPGuest";    //  your network SSID (name) 
-char pass[] = "kendall!";    // your network password (use for WPA, or use as key for WEP)
+char ssid[] = "...";    //  your network SSID (name) 
+char pass[] = "...";    // your network password (use for WPA, or use as key for WEP)
 int keyIndex = 0;       // your network key Index number (needed only for WEP)
 
 int status = WL_IDLE_STATUS;
@@ -33,13 +33,22 @@ void setup() {
     while(true);
   } 
   
+  pinMode(3, INPUT);
+  WiFi.begin();
+  
   // attempt to connect to Wifi network:
-  while (status != WL_CONNECTED) { 
+  while ( WiFi.status() != WL_CONNECTED) { 
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:    
     status = WiFi.begin(ssid, pass);
+    
+    // uncomment this if you want to start smart config
+    if (digitalRead(3) == HIGH){
+      WiFi.beginSmartConfig();
+    }
   } 
+  
   Serial.println("Connected to wifi");
   printWifiStatus();
   

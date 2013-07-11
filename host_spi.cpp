@@ -201,6 +201,7 @@ void SpiInit(){
 
   //For other boards, cant select SS pin. Only divide by 4 to get 4MHz
   SPI.setClockDivider(SPI_CLOCK_DIV4);
+
 }
 
 //*****************************************************************************
@@ -748,7 +749,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
     TM_DEBUG("disconnected\n");
 
     digitalWrite(ConnLED, LOW);
-    digitalWrite(ErrorLED, HIGH);
+    // digitalWrite(ErrorLED, HIGH);
   }
   
   if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP)

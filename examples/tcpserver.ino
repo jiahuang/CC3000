@@ -24,13 +24,22 @@ void setup() {
     while(true);
   } 
   
+  pinMode(3, INPUT);
+  WiFi.begin();
+  
   // attempt to connect to Wifi network:
-  while ( status != WL_CONNECTED) { 
+  while ( WiFi.status() != WL_CONNECTED) { 
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:    
     status = WiFi.begin(ssid, pass);
+    
+    // uncomment this if you want to start smart config
+    if (digitalRead(3) == HIGH){
+      WiFi.beginSmartConfig();
+    }
   } 
+  
   server.begin();
   // you're connected now, so print out the status:
   printWifiStatus();

@@ -9,6 +9,7 @@
 WiFiClass::WiFiClass()
 {
   // Driver initialization
+
   init();
 }
 
@@ -28,6 +29,11 @@ char *WiFiClass::firmwareVersion()
   // tm_net_firmware_version(&major, &minor);
   snprintf(_firmware_version, 8, "%d.%d", 0, 0);
   return _firmware_version;
+}
+
+void WiFiClass::begin()
+{
+  tm_net_initialize();
 }
 
 int WiFiClass::begin(char* ssid)

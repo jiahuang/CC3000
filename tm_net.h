@@ -18,6 +18,7 @@ extern int tm_net_connect_wpa2 (const char *ssid, const char *keys);
 extern int tm_net_is_connected (void);
 extern int tm_net_has_ip (void);
 extern void tm_net_block_until_dhcp (void);
+extern int tm_net_block_until_dhcp_wait(int waitLength);
 extern uint32_t tm_net_local_ip ();
 extern int tm_net_ssid (char ssid[33]);
 extern int tm_net_mac (uint8_t mac[MAC_ADDR_LEN]);

@@ -36,6 +36,21 @@ void tm_net_block_until_dhcp ()
   }
 }
 
+int tm_net_block_until_dhcp_wait (int waitLength)
+{
+  // Wait for interrupts
+  int i = 0;
+  while (i < waitLength && (!tm_net_is_connected() || !tm_net_has_ip())) {
+    delayMicroseconds(100);
+    i++;
+  }
+
+  if (tm_net_is_connected() && tm_net_has_ip()){
+    return 1;
+  }
+  return 0;
+}
+
 int tm_net_ssid (char ssid[33])
 {
   tNetappIpconfigRetArgs ipinfo;
@@ -150,8 +165,8 @@ void tm_net_initialize (void)
   TM_DEBUG("setting event mask\n");
   wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
-  TM_DEBUG("config wlan\n");
-  wlan_ioctl_set_connection_policy(0, 1, 0);
+  // TM_DEBUG("config wlan\n");
+  // wlan_ioctl_set_connection_policy(0, 1, 0);
 
   unsigned char version[2];
   if (!nvmem_read_sp_version(version)) {

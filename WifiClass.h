@@ -41,6 +41,9 @@ public:
      */
     static char* firmwareVersion();
 
+    /* Start Wifi connection for previously connected networks
+    */
+    void begin(void);
 
     /* Start Wifi connection for OPEN networks
      *
