@@ -267,14 +267,6 @@ long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 
   delayMicroseconds(80);
 
-  // unsigned char testData[6];
-  // testData[0] = (unsigned char)0x00;
-  // testData[1] = (unsigned char)0x01;
-  // testData[2] = (unsigned char)0x00;
-  // testData[3] = (unsigned char)0x40;
-  // testData[4] = (unsigned char)0x0E;
-  // testData[5] = (unsigned char)0x04;
-
   SpiWriteDataSynchronous(ucBuf + 4, usLength - 4);
   // SpiWriteDataSynchronous(testData, usLength - 4);
 
@@ -365,7 +357,6 @@ long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
     sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
 
     //deassert CS
-    //digitalWrite(HOST_nCS, HIGH);
     csn(HIGH);
   }
   
@@ -419,36 +410,14 @@ void SpiReadDataSynchronous(unsigned char *data, unsigned short size)
 {
 
   unsigned int i = 0;
-  // csn(LOW);
   for (i = 0; i < size; i ++)
   {
     data[i] = SPI.transfer(tSpiReadHeader[0]); 
-    // if (DEBUG_MODE) {
-    //  Serial.println(data[i], DEC);
-    // }
   }
-  // csn(HIGH);
-  // if (DEBUG_MODE) {
-  //  Serial.println("spi read");
-  //  // Serial.println(size);
-    
-  //  // for (i = 0; i<size; i++){
-  //  //  Serial.println(data[i]);
-  //  // }
-  // }
-
 }
 
 void SpiReadHeader(void)
 {
-
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("SpiReadHeader");
-  // }
-
-  //SpiWriteDataSynchronous(tSpiReadHeader, 3);
-
   SpiReadDataSynchronous(sSpiInformation.pRxPacket, 10);
 }
 
@@ -456,11 +425,6 @@ void SpiReadHeader(void)
 
 long SpiReadDataCont(void)
 {
-
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("SpiReadDataCont");
-  // }
   long data_to_recv;
   unsigned char *evnt_buff, type;
 
@@ -525,23 +489,12 @@ long SpiReadDataCont(void)
 
 void SpiPauseSpi(void)
 {
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("SpiPauseSpi");
-  // }
-
   detachInterrupt(0); //Detaches Pin 3 from interrupt 1
 }
 
 void SpiResumeSpi(void)
 {
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("SpiResumeSpi");
-  // }
-
   attachInterrupt(0, SPI_IRQ, FALLING); //Attaches Pin 2 to interrupt 1
-
 }
 
 void SpiTriggerRxProcessing(void)
@@ -572,39 +525,6 @@ void SpiTriggerRxProcessing(void)
   sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
   sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + SPI_HEADER_SIZE);
 }
-
-// void recvTCP(){
-
-// }
-
-// void sendTCP(){
-
-// }
-
-// int iptostring(unsigned char *ip, char *ipstring)
-// {
-//   int temp,i, length, uLength;
-//   char *ptr;
-//   ip =ip +3;
-//   ptr = ipstring;
-//   uLength = 0;
-//   for (i=0; i<4; i++)
-//   {
-//     temp = *ip;
-//     length = String_utoa((unsigned long) temp, ptr);
-//     ptr = ptr + length;
-//     uLength += length;
-//     *ptr = '.';
-//     ptr++;
-//     uLength++;
-//     ip--;
-//   }
-//   return (uLength-1);
-// }
-
-// void FinishSmartConfig(void) {
-//  mdnsAdvertiser(1,device_name,strlen(device_name));
-// }
 
 // void StartSmartConfig(void)
 // {
@@ -698,48 +618,24 @@ void SpiTriggerRxProcessing(void)
 
 long ReadWlanInterruptPin(void)
 {
-
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.print("ReadWlanInterruptPin: ");
-  //  Serial.println(digitalRead(CC3000_nIRQ));
-  // }
-
   return(digitalRead(CC3000_nIRQ));
-
 }
 
 
 void WlanInterruptEnable()
 {
-
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("WlanInterruptEnable.");
-  //  //delayMicroseconds(50);
-  // }
-  // Serial.print("IRQ is currently at ");
-  // Serial.println(digitalRead(CC3000_nIRQ));
   attachInterrupt(0, SPI_IRQ, FALLING); //Attaches Pin 2 to interrupt 1
 }
 
 
 void WlanInterruptDisable()
 {
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("WlanInterruptDisable");
-  // }
-
   detachInterrupt(0); //Detaches Pin 3 from interrupt 1
 }
-// int STATE = 0;
 
 void SPI_IRQ(void)
 {
-  //Serial.println("SPI_IRQ called");
 
-  // print_spi_state();
   if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
   {
 
@@ -750,11 +646,8 @@ void SPI_IRQ(void)
   {
 
     sSpiInformation.ulSpiState = eSPI_STATE_READ_IRQ;
-    //digitalWrite(LED,HIGH);
     //IRQ line goes down - we are start reception
-    //digitalWrite(HOST_nCS, LOW);
     csn(LOW);
-    //digitalWrite(LED,LOW);
     //
     // Wait for TX/RX Compete which will come as DMA interrupt
     // 
@@ -772,9 +665,7 @@ void SPI_IRQ(void)
       sSpiInformation.usTxPacketLength);
 
     sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
-    // int STATE = 1;
     csn(HIGH);
-    //digitalWrite(HOST_nCS, HIGH);
   }
 
   return;
@@ -826,12 +717,7 @@ void print_spi_state(void)
 
 void WriteWlanPin( unsigned char val )
 {
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.print("WriteWlanPin: ");
-  //  Serial.println(val);
-  //  delayMicroseconds(50);
-  // }
+
   if (val)
   {
     digitalWrite(HOST_VBAT_SW_EN, HIGH);
@@ -853,11 +739,6 @@ void WriteWlanPin( unsigned char val )
 
 void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 {
-  
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("CC3000_UsynchCallback");
-  // }
 
   if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE)
   {
@@ -873,7 +754,6 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
       digitalWrite(DEBUG_LED, HIGH);
     }
     // Turn on the LED7
-    //turnLedOn(7);
   }
   
   if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT)
