@@ -39,6 +39,8 @@ extern unsigned char spi_buffer[];
 // Prototypes for the APIs.
 //
 //*****************************************************************************
+extern unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
+
 extern void SpiOpen(gcSpiHandleRx pfRxHandler);
 extern void SpiClose(void);
 extern long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength);

@@ -250,9 +250,6 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 			if (*pucReceivedData == HCI_TYPE_EVNT)
 			{
 
-				// if (DEBUG_MODE){
-				// 			digitalWrite(DEBUG_LED, HIGH);
-				// 		}
 				// Event Received
 				STREAM_TO_UINT16((char *)pucReceivedData, HCI_EVENT_OPCODE_OFFSET,
 												 usReceivedEventOpcode);
@@ -512,8 +509,10 @@ hci_unsol_event_handler(char *event_hdr)
 	unsigned long NumberOfReleasedPackets;
 	unsigned long NumberOfSentPackets;
 	
-	STREAM_TO_UINT16(event_hdr, HCI_EVENT_OPCODE_OFFSET,event_type);
-	
+	unsigned char * event_hdr_us = (unsigned char *)event_hdr;
+
+	STREAM_TO_UINT16(event_hdr, HCI_EVENT_OPCODE_OFFSET,event_type); 
+
 	if (event_type & HCI_EVNT_UNSOL_BASE)
 	{
 		switch(event_type)
@@ -538,9 +537,21 @@ hci_unsol_event_handler(char *event_hdr)
 			}
 		}
 	}
+
+	// weird issue in arduino where 0x8080 doens't register for simple config done
+	if (event_hdr_us[0] == 0x04 && 
+		event_hdr_us[1] == 0x80 && 
+		event_hdr_us[2] == 0x80){
+		digitalWrite(4, HIGH);
+		if( tSLInformation.sWlanCB )
+		{
+			tSLInformation.sWlanCB(0x8080, 0, 0);
+		}
+	}
 	
 	if(event_type & HCI_EVNT_WLAN_UNSOL_BASE)
 	{           
+
 		switch(event_type)
 		{
 		case HCI_EVNT_WLAN_KEEPALIVE:
@@ -666,7 +677,7 @@ hci_unsolicited_event_handler(void)
 	if (tSLInformation.usEventOrDataReceived != 0)
 	{
 		pucReceivedData = (tSLInformation.pucReceivedData);
-		
+
 		if (*pucReceivedData == HCI_TYPE_EVNT)
 		{			
 			

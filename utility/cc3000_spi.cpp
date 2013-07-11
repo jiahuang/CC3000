@@ -46,7 +46,6 @@
 
 #define ENABLE                    (1)
 
-#define NETAPP_IPCONFIG_MAC_OFFSET        (20)
 #define DEBUG_LED (7)
 
 
@@ -61,7 +60,7 @@ int loc = 0;
 // c4:10:8a:57:8e:68
 // 84:1b:5e:45:8c:f1
 unsigned char bssid[] = {0x84, 0x1b, 0x5e, 0x45, 0x8c, 0xf1};       // your network key
-char device_name[] = "home_assistant";
+char device_name[] = "CC3000";
 const char aucCC3000_prefix[] = {'T', 'T', 'T'};
 const unsigned char smartconfigkey[] = {0x73,0x6d,0x61,0x72,0x74,0x63,0x6f,0x6e,0x66,0x69,0x67,0x41,0x45,0x53,0x31,0x36};
 
@@ -70,9 +69,7 @@ const unsigned char smartconfigkey[] = {0x73,0x6d,0x61,0x72,0x74,0x63,0x6f,0x6e,
 int keyIndex = 0; 
 unsigned char printOnce = 1;
 
-unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
 
-unsigned char ucStopSmartConfig;
 long ulSocket;
 
 typedef struct
@@ -208,7 +205,7 @@ void SpiInit(){
   //SPI.setClockDivider(SS, SPI_CLOCK_DIV21);
 
   //For other boards, cant select SS pin. Only divide by 4 to get 4MHz
-  SPI.setClockDivider(SPI_CLOCK_DIV128);
+  SPI.setClockDivider(SPI_CLOCK_DIV4);
 }
 
 //*****************************************************************************
@@ -596,6 +593,19 @@ void SpiTriggerRxProcessing(void)
   }
   
   sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
+
+  // try reading smart config done
+  // if (sSpiInformation.pRxPacket[0] == 0x02
+  //   && sSpiInformation.pRxPacket[1] == 0x00
+  //   && sSpiInformation.pRxPacket[2] == 0x00
+  //   && sSpiInformation.pRxPacket[3] == 0x00
+  //   && sSpiInformation.pRxPacket[4] == 0x05
+  //   && sSpiInformation.pRxPacket[5] == 0x04
+  //   && sSpiInformation.pRxPacket[6] == 0x80
+  //   && sSpiInformation.pRxPacket[7] == 0x80){
+  //   digitalWrite(4, HIGH);
+  // }
+
   sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + SPI_HEADER_SIZE);
 }
 
@@ -673,7 +683,6 @@ void SPI_IRQ(void)
     sSpiInformation.ulSpiState = eSPI_STATE_READ_EOT;
     
     SSIContReadOperation();
-    
   }
   else if (sSpiInformation.ulSpiState == eSPI_STATE_WRITE_IRQ)
   {
@@ -752,89 +761,6 @@ void WriteWlanPin( unsigned char val )
   }
 
 }
-
-
-//*****************************************************************************
-//
-//  The function handles asynchronous events that come from CC3000 device 
-//!     
-//
-//*****************************************************************************
-
-void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
-{
-  
-  // if (DEBUG_MODE)
-  // {
-  //  Serial.println("CC3000_UsynchCallback");
-  // }
-
-  if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE)
-  {
-    ulSmartConfigFinished = 1;
-    ucStopSmartConfig     = 1;  
-    // if smart config is done, stop advertising
-    mdnsAdvertiser(1,device_name,strlen(device_name));
-
-    Serial.println("smart config finished");
-    // stop the smart config blinking
-    digitalWrite(ConnLED, LOW);
-    digitalWrite(ErrorLED, LOW);
-  }
-  
-  if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT)
-  {
-    ulCC3000Connected = 1;
-    Serial.println("connected");
-  }
-  
-  if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT)
-  {   
-    ulCC3000Connected = 0;
-    ulCC3000DHCP      = 0;
-    ulCC3000DHCP_configured = 0;
-    // printOnce = 1;
-    
-    Serial.println("disconnected");
-    digitalWrite(ConnLED, LOW);    
-  }
-  
-  if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP)
-  {
-
-    Serial.println("dhcp");
-    // Notes: 
-    // 1) IP config parameters are received swapped
-    // 2) IP config parameters are valid only if status is OK, i.e. ulCC3000DHCP becomes 1
-    
-    // only if status is OK, the flag is set to 1 and the addresses are valid
-    if ( *(data + NETAPP_IPCONFIG_MAC_OFFSET) == 0)
-    {
-      Serial.println("set dhcp");
-      // Serial.print("Ip: ");
-      // Serial.println(data[3], HEX);
-      // Serial.println(data[2], HEX);
-      // Serial.println(data[1], HEX);
-      // Serial.println(data[0], HEX);
-
-      
-      ulCC3000DHCP = 1;
-      digitalWrite(ConnLED, HIGH);
-    }
-    else
-    {
-      ulCC3000DHCP = 0;
-      Serial.println("DHCP failed");
-      digitalWrite(ErrorLED, HIGH);
-    }
-  }
-  
-  if (lEventType == HCI_EVENT_CC3000_CAN_SHUT_DOWN)
-  {
-    OkToDoShutDown = 1;
-  }
-}
-
 
 
 // *****************************************************************************

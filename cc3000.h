@@ -21,7 +21,6 @@ extern "C" {
 // Prototypes for the APIs.
 //
 //*****************************************************************************
-extern unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
 extern long ulSocket;
 
 extern int test(void);

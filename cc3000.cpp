@@ -16,6 +16,7 @@
 #define CC3000_RX_BUFFER_OVERHEAD_SIZE          (20)
 #define DISABLE 0
 #define ENABLE 1
+#define NETAPP_IPCONFIG_MAC_OFFSET        (20)
 
 char ssid[] = "HCPGuest";                     // your network SSID (name) 
 unsigned char keys[] = "kendall!";       // your network key
@@ -23,12 +24,100 @@ int connected = -1;
 const char aucCC3000_prefix[] = {'T', 'T', 'T'};
 //AES key "smartconfigAES16"
 const unsigned char smartconfigkey[] = {0x73,0x6d,0x61,0x72,0x74,0x63,0x6f,0x6e,0x66,0x69,0x67,0x41,0x45,0x53,0x31,0x36};
+unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
+unsigned char ucStopSmartConfig;
 
 // unsigned long ulSmartConfigFinished, ulCC3000Connected,ulCC3000DHCP, OkToDoShutDown, ulCC3000DHCP_configured;
 unsigned char pucCC3000_Rx_Buffer[CC3000_APP_BUFFER_SIZE + CC3000_RX_BUFFER_OVERHEAD_SIZE] = { 0 };
 
 // unsigned char ucStopSmartConfig;
 // long ulSocket;
+
+
+
+//*****************************************************************************
+//
+//  The function handles asynchronous events that come from CC3000 device 
+//!     
+//
+//*****************************************************************************
+
+void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
+{
+  
+  // if (DEBUG_MODE)
+  // {
+  //  Serial.println("CC3000_UsynchCallback");
+  // }
+
+  if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE)
+  {
+    
+    ulSmartConfigFinished = 1;
+    ucStopSmartConfig     = 1;  
+    Serial.println("smart config finished");
+
+    // if smart config is done, stop advertising
+    //mdnsAdvertiser(1,device_name,strlen(device_name));
+
+    // stop the smart config blinking
+    // digitalWrite(ConnLED, LOW);
+    // digitalWrite(ErrorLED, LOW);
+  }
+  
+  if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT)
+  {
+    ulCC3000Connected = 1;
+    Serial.println("connected");
+  }
+  
+  if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT)
+  {   
+    ulCC3000Connected = 0;
+    ulCC3000DHCP      = 0;
+    ulCC3000DHCP_configured = 0;
+    // printOnce = 1;
+    
+    Serial.println("disconnected");
+    digitalWrite(ConnLED, LOW);    
+  }
+  
+  if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP)
+  {
+
+    Serial.println("dhcp");
+    // Notes: 
+    // 1) IP config parameters are received swapped
+    // 2) IP config parameters are valid only if status is OK, i.e. ulCC3000DHCP becomes 1
+    
+    // only if status is OK, the flag is set to 1 and the addresses are valid
+    if ( *(data + NETAPP_IPCONFIG_MAC_OFFSET) == 0)
+    {
+      Serial.println("set dhcp");
+      // Serial.print("Ip: ");
+      // Serial.println(data[3], HEX);
+      // Serial.println(data[2], HEX);
+      // Serial.println(data[1], HEX);
+      // Serial.println(data[0], HEX);
+
+      
+      ulCC3000DHCP = 1;
+      digitalWrite(ConnLED, HIGH);
+    }
+    else
+    {
+      ulCC3000DHCP = 0;
+      Serial.println("DHCP failed");
+      digitalWrite(ErrorLED, HIGH);
+    }
+  }
+  
+  if (lEventType == HCI_EVENT_CC3000_CAN_SHUT_DOWN)
+  {
+    OkToDoShutDown = 1;
+  }
+}
+
 
 
 void connectUDP () {
@@ -155,11 +244,11 @@ void initialize(void){
   printMAC();
   printVersion();
   
-  Serial.println("setting event mask");
-  wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+ //  Serial.println("setting event mask");
+ //  wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 
 	// Serial.println("config wlan");
-	// wlan_ioctl_set_connection_policy(DISABLE, DISABLE, WlanInterruptDisable);
+	// wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
 
 	// Serial.println("Attempting to connect...");
 	// int connected = -1;
@@ -181,15 +270,18 @@ void StartSmartConfig(void)
   OkToDoShutDown=0;
 
   // Reset all the previous configuration
-  if (wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE) != 0) {
-    digitalWrite(ErrorLED, HIGH);
-    return;
-  }
+  wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE);
 
-  if (wlan_ioctl_del_profile(255) != 0) {
-    digitalWrite(ErrorLED, HIGH);
-    return;
-  }
+  // if (wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE) != 0) {
+  //   digitalWrite(ErrorLED, HIGH);
+  //   return;
+  // }
+
+  wlan_ioctl_del_profile(255);
+  // if (wlan_ioctl_del_profile(255) != 0) {
+  //   digitalWrite(ErrorLED, HIGH);
+  //   return;
+  // }
 
   //Wait until CC3000 is disconnected
   while (ulCC3000Connected == 1)
@@ -202,22 +294,25 @@ void StartSmartConfig(void)
   // Trigger the Smart Config process
   // Start blinking LED6 during Smart Configuration process
   digitalWrite(ConnLED, HIGH);  
-  if (wlan_smart_config_set_prefix((char*)aucCC3000_prefix) != 0){
-    digitalWrite(ErrorLED, HIGH);
-    return;
-  }
+  wlan_smart_config_set_prefix((char*)aucCC3000_prefix);
+  
+  // if (wlan_smart_config_set_prefix((char*)aucCC3000_prefix) != 0){
+  //   digitalWrite(ErrorLED, HIGH);
+  //   return;
+  // }
   Serial.println("set prefix");
   digitalWrite(ConnLED, LOW);
 
   // Start the SmartConfig start process
-  if (wlan_smart_config_start(0) != 0){
-    digitalWrite(ErrorLED, HIGH);
-    return;
-  }
+  wlan_smart_config_start(0);
+  // if (wlan_smart_config_start(0) != 0){
+  //   digitalWrite(ErrorLED, HIGH);
+  //   return;
+  // }
   Serial.println("smart config start");
 
   digitalWrite(ConnLED, HIGH);
-
+  
   // Wait for Smartconfig process complete
   while (ulSmartConfigFinished == 0)
   {
@@ -232,38 +327,19 @@ void StartSmartConfig(void)
   digitalWrite(ConnLED, LOW);
 
 
-  // #ifndef CC3000_UNENCRYPTED_SMART_CONFIG
-  // // create new entry for AES encryption key
-  // if (nvmem_create_entry(NVMEM_AES128_KEY_FILEID,16) != 0){
-  //   digitalWrite(ErrorLED, HIGH);
-  //   return;
-  // }
-
-  // // write AES key to NVMEM
-  // if (aes_write_key((unsigned char *)(&smartconfigkey[0])) != 0){
-  //   digitalWrite(ErrorLED, HIGH);
-  //   return;
-  // }
-
-  // // Decrypt configuration information and add profile
-  // if (wlan_smart_config_process() != 0) {
-  //   digitalWrite(ErrorLED, HIGH);
-  //   return;
-  // }
-  // #endif    
-  
   
   // Configure to connect automatically to the AP retrieved in the 
   // Smart config process. Enabled fast connect.
-  if (wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE) != 0){
-    digitalWrite(ErrorLED, HIGH);
-    return;
-  }
+  wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
+  // if (wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE) != 0){
+  //   digitalWrite(ErrorLED, HIGH);
+  //   return;
+  // }
 
   // reset the CC3000
   wlan_stop();
 
-  delayMicroseconds(100);
+  delayMicroseconds(600);
   wlan_start(0);
 
   // Mask out all non-required events

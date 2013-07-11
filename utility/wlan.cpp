@@ -222,12 +222,9 @@ void wlan_init(		tWlanCB	 	sWlanCB,
 //*****************************************************************************
 void SpiReceiveHandler(void *pvBuffer)
 {	
-	// if (DEBUG_MODE) {
-	// 			digitalWrite(DEBUG_LED, HIGH);
-	// 		}
 	tSLInformation.usEventOrDataReceived = 1;
 	tSLInformation.pucReceivedData = (unsigned char 	*)pvBuffer;
-	
+
 	hci_unsolicited_event_handler();
 }
 
