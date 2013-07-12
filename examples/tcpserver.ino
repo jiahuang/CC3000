@@ -1,6 +1,18 @@
 #include <SPI.h>
 #include <CC3000.h>
 
+/* the current way of connecting is to use smart config.
+ * smart config involves downloading an app (iphone: search TI cc3000 in the app store)
+ * (android: gotta build your own app from http://processors.wiki.ti.com/index.php/CC3000_First_Time_Configuration)
+ * use the following settings on the app:
+ *     fill in your network name and password
+ *     the device name is CC3000
+ *     Arduinos can't run AES encryption, so do not check the encryption key
+ *     
+ * just uncomment out the WiFi.begin(ssid, pass) if you want to connect a different way
+ * 
+ * after this connects open up the cc3000's IP from a browser to see some output
+ */
 
 char ssid[] = "...";      // your network SSID (name) 
 char pass[] = "...";   // your network password
@@ -25,18 +37,24 @@ void setup() {
   } 
   
   pinMode(3, INPUT);
+  // use last time's configs to connect if possible
   WiFi.begin();
   
   // attempt to connect to Wifi network:
   while ( WiFi.status() != WL_CONNECTED) { 
+    
+    /*
+    // If you uncomment this block, be sure to comment out WiFi.begin() or else the cc3000
+    // will attempt to connect more than once
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:    
-    status = WiFi.begin(ssid, pass);
+    WiFi.begin(ssid, pass);
+    */
     
-    // uncomment this if you want to start smart config
+    // hang until smart config
     if (digitalRead(3) == HIGH){
-      WiFi.beginSmartConfig();
+      status = WiFi.beginSmartConfig();
     }
   } 
   

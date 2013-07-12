@@ -34,6 +34,7 @@ char *WiFiClass::firmwareVersion()
 void WiFiClass::begin()
 {
   tm_net_initialize();
+  delay(500);
 }
 
 int WiFiClass::begin(char* ssid)
