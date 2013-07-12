@@ -1,4 +1,4 @@
-#CC3000 TCP Server
+#CC3000 TCP Client
 
 This example makes the CC3000 connect to Google and returns the webpage
 
