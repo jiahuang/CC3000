@@ -70,8 +70,8 @@ void setup ()
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:    
-    WiFi.begin(ssid, pass);
     */
+//    WiFi.begin(ssid, pass);
     
     // hang until smart config
     if (digitalRead(3) == HIGH){
