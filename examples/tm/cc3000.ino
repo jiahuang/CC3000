@@ -3,7 +3,7 @@
  */
  
 #include <SPI.h>
-#include <cc3000.h>
+#include <CC3000.h>
 #include <utility/debug.h>
 #include <utility/socket.h>
 

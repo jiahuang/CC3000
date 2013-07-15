@@ -1,5 +1,5 @@
 #include <SPI.h>
-#include <cc3000.h>
+#include <CC3000.h>
 /*
  * the current way of connecting is to use smart config.
  * smart config involves downloading an app (iphone: search TI cc3000 in the app store)
