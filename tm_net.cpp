@@ -176,6 +176,10 @@ void tm_net_initialize (void)
   }
 }
 
+void tm_net_set_policy(){
+  wlan_ioctl_set_connection_policy(0, 1, 0); 
+}
+
 void tm_net_smartconfig_initialize(void){
   StartSmartConfig();
 }

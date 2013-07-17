@@ -52,7 +52,8 @@ int WiFiClass::begin(char* ssid, uint8_t key_idx, const char *key)
 int WiFiClass::begin(char* ssid, const char *passphrase)
 {
   tm_net_initialize();
-
+  tm_net_set_policy();
+  
   uint8_t status = WL_IDLE_STATUS;
   uint8_t attempts = WL_MAX_ATTEMPT_CONNECTION;
 

@@ -23,6 +23,7 @@ extern uint32_t tm_net_local_ip ();
 extern int tm_net_ssid (char ssid[33]);
 extern int tm_net_mac (uint8_t mac[MAC_ADDR_LEN]);
 // extern int tm_net_rssi ();
+extern void tm_net_set_policy();
 
 extern int tm_net_is_readable (int ulSocket);
 extern int tm_net_block_until_readable (int ulSocket, int tries);
