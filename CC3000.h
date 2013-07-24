@@ -6,7 +6,7 @@
 extern "C" {
   #include "utility/arduino_wl_definitions.h"
   #include "utility/arduino_wl_types.h"
-  #include "driver_patch.h"
+  #include "firmware_patch.h"
 }
 
 #include "IPAddress.h"
