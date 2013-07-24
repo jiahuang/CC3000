@@ -12,7 +12,7 @@ void setup() {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
   
-  Serial.println("Type 'X' to begin driver patch.");
+  Serial.println("Type 'X' to begin firmware patch.");
   Serial.println("Do the driver patch before the firmware patch.");
 
 }
@@ -24,9 +24,9 @@ void loop() {
     
     if (c == 'X' && patched == 0) {
       patched = 1;
-      Serial.println("Beginning driver patch...");
-      driver_patch();
-      Serial.println("Done with driver patch");
+      Serial.println("Beginning firmware patch...");
+      firmware_patch();
+      Serial.println("Done with firmware patch");
     } else if (c == 'X' && patched == 1){
       Serial.println("Already patched");
     }
