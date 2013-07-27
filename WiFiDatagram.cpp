@@ -4,7 +4,7 @@ extern "C" {
 }
 #include <string.h>
 
-#include "cc3000.h"
+#include "CC3000.h"
 #include "tm_net.h"
 #include "WiFiDatagram.h"
 
