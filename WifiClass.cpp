@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "cc3000.h"
+#include "CC3000.h"
 #include "tm_net.h"
 #include "tm_debug.h"
 #include "utility/arduino_wl_definitions.h"
