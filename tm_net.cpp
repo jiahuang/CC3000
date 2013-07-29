@@ -147,7 +147,7 @@ int tm_net_block_until_readable (int ulSocket, int timeout) {
 
 void tm_net_initialize (void)
 {
-  SpiInit();
+  // SpiInit();
   delayMicroseconds(100);
 
   TM_DEBUG("Calling wlan_init\n");

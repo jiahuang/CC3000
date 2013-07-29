@@ -242,7 +242,8 @@ initPatch(unsigned short cRequestPatch)
 	//init all layers
 	//
 	// init_spi();
-	
+	SpiInit();
+  	delayMicroseconds(100);
 	
 	//
 	// WLAN On API Implementation
@@ -252,8 +253,10 @@ initPatch(unsigned short cRequestPatch)
 	// Trigger a WLAN device
 	//
 	wlan_start(cRequestPatch);
+	
   	wlan_smart_config_set_prefix((char*)aucCC3000_prefix);
 	wlan_ioctl_set_connection_policy(0, 0, 0);	
+	
 	wlan_ioctl_del_profile(255);
 	
 	
@@ -267,6 +270,7 @@ initPatch(unsigned short cRequestPatch)
 	wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
 	
 	// unsolicicted_events_timer_init();
+	
 	return(0);
 }
 
@@ -410,6 +414,7 @@ void driver_patch(void)
 	// init board and request to load with no patches.
 	// this is in order to overwrite restrictions to write to specific places in EEPROM
 	initPatch(1);
+	
 	// read MAC address
 	mac_status = nvmem_get_mac_address(cMacFromEeprom);
 	
@@ -507,4 +512,5 @@ void driver_patch(void)
 	
 	// turnLedOn(8);
 	digitalWrite(8, HIGH);
+	
 }

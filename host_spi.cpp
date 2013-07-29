@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 #include "SPI.h"
-#include "tm_debug.h"
+// #include "tm_debug.h"
 #include "host_spi.h"
 #include "utility/wlan.h"
 #include "utility/nvmem.h"
@@ -130,7 +130,7 @@ void csn(int mode)
 //*****************************************************************************
 void SpiCleanGPIOISR(void)
 {
-  TM_DEBUG("SpiCleanGPIOISR\n");
+  // TM_DEBUG("SpiCleanGPIOISR\n");
 
   //add code
 }
@@ -151,7 +151,7 @@ void SpiCleanGPIOISR(void)
 void
 SpiClose(void)
 {
-  TM_DEBUG("SpiClose\n");
+  // TM_DEBUG("SpiClose\n");
 
   if (sSpiInformation.pRxPacket)
   {
@@ -211,7 +211,7 @@ void SpiInit(){
 //*****************************************************************************
 void SpiOpen(gcSpiHandleRx pfRxHandler)
 {
-  TM_DEBUG("SpiOpen\n");
+  // TM_DEBUG("SpiOpen\n");
 
   sSpiInformation.ulSpiState = eSPI_STATE_POWERUP;
 
@@ -230,7 +230,7 @@ void SpiOpen(gcSpiHandleRx pfRxHandler)
   tSLInformation.WlanInterruptEnable();
 
 
-  TM_DEBUG("Completed SpiOpen\n");
+  // TM_DEBUG("Completed SpiOpen\n");
 }
 
 
@@ -254,7 +254,7 @@ long SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
   //
   // workaround for first transaction
   //
-  TM_DEBUG("SpiFirstWrite\n");
+  // TM_DEBUG("SpiFirstWrite\n");
 
   // digitalWrite(HOST_nCS, LOW);
   csn(LOW);
@@ -652,7 +652,7 @@ void SPI_IRQ(void)
   return;
 
 }
-
+/*
 void print_spi_state(void)
 {
   if (DEBUG_MODE)
@@ -694,7 +694,7 @@ void print_spi_state(void)
 
   return;
 }
-
+*/
 
 void WriteWlanPin( unsigned char val )
 {
@@ -730,7 +730,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
   if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT)
   {
     ulCC3000Connected = 1;
-    TM_DEBUG("connected\n");
+    // TM_DEBUG("connected\n");
   }
   
   if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT)
@@ -740,7 +740,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
     ulCC3000DHCP_configured = 0;
     printOnce = 1;
     
-    TM_DEBUG("disconnected\n");
+    // TM_DEBUG("disconnected\n");
 
     digitalWrite(ConnLED, LOW);
     // digitalWrite(ErrorLED, HIGH);
@@ -749,7 +749,7 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
   if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP)
   {
 
-    TM_DEBUG("dhcp\n");
+    // TM_DEBUG("dhcp\n");
     // Notes: 
     // 1) IP config parameters are received swapped
     // 2) IP config parameters are valid only if status is OK, i.e. ulCC3000DHCP becomes 1
@@ -761,14 +761,14 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 
       ulCC3000DHCP = 1;
 
-      TM_DEBUG("DHCP Connected with IP: %hhu.%hhu.%hhu.%hhu\n", (unsigned char) data[3], (unsigned char) data[2], (unsigned char) data[1], (unsigned char) data[0]);
+      // TM_DEBUG("DHCP Connected with IP: %hhu.%hhu.%hhu.%hhu\n", (unsigned char) data[3], (unsigned char) data[2], (unsigned char) data[1], (unsigned char) data[0]);
 
       digitalWrite(ConnLED, HIGH);
     }
     else
     {
       ulCC3000DHCP = 0;
-      TM_DEBUG("DHCP failed\n");
+      // TM_DEBUG("DHCP failed\n");
       digitalWrite(ConnLED, LOW);
     }
   }
