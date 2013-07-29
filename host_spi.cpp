@@ -514,7 +514,7 @@ void StartSmartConfig(void)
 
   // Reset all the previous configuration
 
-  if (wlan_ioctl_set_connection_policy(DISABLE, DISABLE, DISABLE) != 0) {
+  if (wlan_ioctl_set_connection_policy(0, 0, 0) != 0) {
     digitalWrite(ErrorLED, HIGH);
     return;
   }
@@ -571,11 +571,11 @@ void StartSmartConfig(void)
   
   // Configure to connect automatically to the AP retrieved in the 
   // Smart config process. Enabled fast connect.
-  if (wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE) != 0){
+  if (wlan_ioctl_set_connection_policy(0, 0, 1) != 0){
     digitalWrite(ErrorLED, HIGH);
     return;
   }
-
+  
   // reset the CC3000
   wlan_stop();
 
